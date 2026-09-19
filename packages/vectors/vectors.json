@@ -1,0 +1,215 @@
+{
+  "version": 1,
+  "canonical": [
+    {
+      "name": "empty-object",
+      "input": {},
+      "expected": "{}"
+    },
+    {
+      "name": "empty-array",
+      "input": [],
+      "expected": "[]"
+    },
+    {
+      "name": "key-order",
+      "input": {
+        "b": 1,
+        "a": 2
+      },
+      "expected": "{\"a\":2,\"b\":1}"
+    },
+    {
+      "name": "nested",
+      "input": {
+        "z": {
+          "d": 4,
+          "c": 3
+        },
+        "a": [
+          3,
+          2,
+          1
+        ],
+        "m": null
+      },
+      "expected": "{\"a\":[3,2,1],\"m\":null,\"z\":{\"c\":3,\"d\":4}}"
+    },
+    {
+      "name": "bools",
+      "input": {
+        "t": true,
+        "f": false
+      },
+      "expected": "{\"f\":false,\"t\":true}"
+    },
+    {
+      "name": "unicode-bmp",
+      "input": {
+        "café": 1
+      },
+      "expected": "{\"café\":1}"
+    },
+    {
+      "name": "unicode-astral-value",
+      "input": {
+        "emoji": "🍕"
+      },
+      "expected": "{\"emoji\":\"🍕\"}"
+    },
+    {
+      "name": "astral-key-order",
+      "input": {
+        "𝄞": 4,
+        "€": 3,
+        "é": 2,
+        "z": 1
+      },
+      "expected": "{\"z\":1,\"é\":2,\"€\":3,\"𝄞\":4}"
+    },
+    {
+      "name": "string-escapes",
+      "input": {
+        "a\"b": "x\ny\t\\end"
+      },
+      "expected": "{\"a\\\"b\":\"x\\ny\\t\\\\end\"}"
+    },
+    {
+      "name": "control-char",
+      "input": {
+        "c": "\u0001"
+      },
+      "expected": "{\"c\":\"\\u0001\"}"
+    },
+    {
+      "name": "int",
+      "input": {
+        "n": -42
+      },
+      "expected": "{\"n\":-42}"
+    },
+    {
+      "name": "int-max-safe",
+      "input": {
+        "n": 9007199254740991
+      },
+      "expected": "{\"n\":9007199254740991}"
+    },
+    {
+      "name": "float-point-one",
+      "input": {
+        "f": 0.1
+      },
+      "expected": "{\"f\":0.1}"
+    },
+    {
+      "name": "float-big-int-like",
+      "input": {
+        "f": 1e+16
+      },
+      "expected": "{\"f\":10000000000000000}"
+    },
+    {
+      "name": "float-exp",
+      "input": {
+        "f": 1e+21
+      },
+      "expected": "{\"f\":1e+21}"
+    },
+    {
+      "name": "float-trailing-zero",
+      "input": {
+        "f": 89.0
+      },
+      "expected": "{\"f\":89}"
+    },
+    {
+      "name": "float-decimal",
+      "input": {
+        "f": 123.456
+      },
+      "expected": "{\"f\":123.456}"
+    },
+    {
+      "name": "float-small",
+      "input": {
+        "f": 1e-06
+      },
+      "expected": "{\"f\":0.000001}"
+    },
+    {
+      "name": "float-tiny-exp",
+      "input": {
+        "f": 5e-07
+      },
+      "expected": "{\"f\":5e-7}"
+    },
+    {
+      "name": "float-hundred",
+      "input": {
+        "f": 100.0
+      },
+      "expected": "{\"f\":100}"
+    },
+    {
+      "name": "float-negative",
+      "input": {
+        "f": -2.5
+      },
+      "expected": "{\"f\":-2.5}"
+    },
+    {
+      "name": "float-repeating",
+      "input": {
+        "f": 0.30000000000000004
+      },
+      "expected": "{\"f\":0.30000000000000004}"
+    },
+    {
+      "name": "attestation-shaped",
+      "input": {
+        "attestation_id": "vat_test01",
+        "protocol_version": "1.1",
+        "status": "ACTIVE",
+        "claims": [
+          {
+            "type": "price",
+            "item": "service_call",
+            "amount": 8900,
+            "currency": "USD",
+            "disclosed": true
+          }
+        ],
+        "verified_at": "2026-09-19T12:00:05Z"
+      },
+      "expected": "{\"attestation_id\":\"vat_test01\",\"claims\":[{\"amount\":8900,\"currency\":\"USD\",\"disclosed\":true,\"item\":\"service_call\",\"type\":\"price\"}],\"protocol_version\":\"1.1\",\"status\":\"ACTIVE\",\"verified_at\":\"2026-09-19T12:00:05Z\"}"
+    }
+  ],
+  "signatures": [
+    {
+      "name": "sig-0",
+      "seed_hex": "527e6bfe95338c4d327378eb9cba188cef17c7c41d21267830537be4929f39e4",
+      "public_key_hex": "0970eda93fac83c04413c4ca51fe0874ad0bc096b8135a2b431d73f8b15dbd10",
+      "message": "hello veritas",
+      "signature_hex": "797287e7a715fa252049a9cd9064547a38547d8d2815bef8db361a804e45a867a9b515ab3a9bfa3c998c38fbae2fb67ea58d9bbbb3dcc19f0884381badddd001"
+    },
+    {
+      "name": "sig-1",
+      "seed_hex": "527e6bfe95338c4d327378eb9cba188cef17c7c41d21267830537be4929f39e4",
+      "public_key_hex": "0970eda93fac83c04413c4ca51fe0874ad0bc096b8135a2b431d73f8b15dbd10",
+      "message": "{\"a\":2,\"b\":1}",
+      "signature_hex": "87031c1fdf3737a6e952c0239226235054ba5d2b18c6c99ffc1ad44bcfdcdb001d405579d0afb378025de4425295531fdb400a6e42a1a3bb1af02f268b56d805"
+    },
+    {
+      "name": "sig-2",
+      "seed_hex": "527e6bfe95338c4d327378eb9cba188cef17c7c41d21267830537be4929f39e4",
+      "public_key_hex": "0970eda93fac83c04413c4ca51fe0874ad0bc096b8135a2b431d73f8b15dbd10",
+      "message": "price attestation: $89.00 service call — cafés welcome 🍕",
+      "signature_hex": "be8ec32a831a17b5d8044e289defd83c771f7c131a2513e45c635d7d7a613a4edb959f63107b2659b5c3d93601bb9238b66cfd278d2be74c33964a38f968600c"
+    }
+  ],
+  "negative": {
+    "wrong_key_public_hex": "63ac4e6701ef1b29248d8e92bf7bafc2c953187710695e881e56d9f352789862",
+    "note": "signatures must NOT verify under wrong_key_public_hex; flipping any message byte must fail verification"
+  }
+}

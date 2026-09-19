@@ -1,0 +1,9 @@
+[project]
+name = "veritas-core"
+version = "0.1.0"
+description = "Veritas attestation protocol — Python reference implementation (T1)"
+requires-python = ">=3.10"
+dependencies = ["pynacl>=1.5"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
