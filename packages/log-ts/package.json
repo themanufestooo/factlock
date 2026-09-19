@@ -1,0 +1,27 @@
+{
+  "description": "Veritas Merkle transparency log — RFC 6962 over SHA-256 (T4)",
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  },
+  "exports": {
+    ".": {
+      "default": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  },
+  "main": "dist/src/index.js",
+  "name": "@veritas/merkle-log",
+  "scripts": {
+    "audit": "npm run build && node dist/scripts/audit-log.js",
+    "bench": "npm run build && node dist/scripts/bench.js",
+    "build": "tsc",
+    "test": "npm run build && node --test dist/test/*.test.js"
+  },
+  "type": "module",
+  "types": "dist/src/index.d.ts",
+  "version": "0.1.0",
+  "dependencies": {
+    "@veritas/attestation-core": "file:../core-ts"
+  }
+}
