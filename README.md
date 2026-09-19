@@ -26,7 +26,8 @@ packages/
   verify-api-ts/       T6 — public verification API: signatures, inclusion,
                        lifecycle, freshness verdicts, rate-limited free tier  ✅ done
   badge-ts/            T7 — hosted badge page + embeddable JS badge (EN/ES)   ✅ done
-apps/                  (T8+) MCP server
+  mcp-ts/              T8 — MCP server: veritas_check tool for AI agents       ✅ done
+  anchor-ts/           T5 — daily anchoring: hash-chained anchor log of roots ✅ done
 ```
 
 ## T1 status — done, tested
@@ -50,11 +51,12 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
 - **T2** ✅ Key management service (KMS/HSM-shaped, rotation, well-known keys)
 - **T3** ✅ Attestation issuance service (schema validation, server-stamped time, auth trail)
 - **T4** ✅ Merkle transparency log + inclusion proofs
-- **T5** ⏳ Daily on-chain anchoring job
+- **T5** ✅ Daily anchoring job (hash-chained anchor log; local + OTS-shaped providers)
 - **T6** ✅ Public verification API (free tier, freshness verdicts)
 - **T7** ✅ Hosted badge page + embeddable badge (EN/ES)
-- **T8** ⏳ MCP server (`veritas_check`)
+- **T8** ✅ MCP server (`veritas_check`)
 - **T9–T12** ⏳ Verifier app, review console, disputes, re-verification scheduler
 - **T13–T14** ⏳ Stripe subscriptions + metered API billing
 
-Critical path: T1 → T2 → T3 → T4 → T6 → T7 ✅ complete. Next: T8, T5.
+Critical path: T1 → T2 → T3 → T4 → T6 → T7 ✅ complete. T8 + T5 ✅ complete.
+Next: T9–T12 (ops surfaces), then T13–T14 (billing).
