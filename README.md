@@ -55,8 +55,8 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
 - **T6** ✅ Public verification API (free tier, freshness verdicts)
 - **T7** ✅ Hosted badge page + embeddable badge (EN/ES)
 - **T8** ✅ MCP server (`veritas_check`)
-- **T9–T12** ⏳ Verifier app, review console, disputes, re-verification scheduler
-- **T13–T14** ⏳ Stripe subscriptions + metered API billing
+- **T9–T12** ✅ Verifier app, review console, disputes (3rd-strike revocation), re-verification scheduler
+- **T13–T14** ✅ Stripe subscriptions + metered API billing
 
 Critical path: T1 → T2 → T3 → T4 → T6 → T7 ✅ complete. T8 + T5 ✅ complete.
-Next: T9–T12 (ops surfaces), then T13–T14 (billing).
+All 14 build tickets ✅ complete — 286/286 tests green.
