@@ -1,0 +1,410 @@
+{
+  "$defs": {
+    "authorization": {
+      "additionalProperties": false,
+      "description": "Business authorization trail (spec §3.2). Required for countersignature.",
+      "properties": {
+        "auth_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "authorized_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "authorized_by": {
+          "enum": [
+            "owner-on-file"
+          ]
+        },
+        "session_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "sms_confirmation_ref": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "auth_id",
+        "session_id",
+        "sms_confirmation_ref",
+        "authorized_at",
+        "authorized_by"
+      ],
+      "type": "object"
+    },
+    "claim": {
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "license"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "authority": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "checked_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "license_number": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "inactive",
+                  "expired",
+                  "suspended"
+                ]
+              }
+            },
+            "required": [
+              "authority",
+              "license_number",
+              "status",
+              "checked_at"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "hours"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "schedule": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "close": {
+                      "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+                      "type": "string"
+                    },
+                    "day": {
+                      "enum": [
+                        "mon",
+                        "tue",
+                        "wed",
+                        "thu",
+                        "fri",
+                        "sat",
+                        "sun"
+                      ]
+                    },
+                    "open": {
+                      "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "open",
+                    "close"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "timezone": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "timezone",
+              "schedule"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "price"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "amount": {
+                "description": "integer minor units",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "currency": {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "disclosed": {
+                "type": "boolean"
+              },
+              "item": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "unit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "item",
+              "amount",
+              "currency",
+              "disclosed"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "availability"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "service": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "service",
+              "available"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "identity",
+            "license",
+            "hours",
+            "price",
+            "availability"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "signature": {
+      "additionalProperties": false,
+      "properties": {
+        "alg": {
+          "const": "Ed25519"
+        },
+        "key_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "sig": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "alg",
+        "key_id",
+        "sig"
+      ],
+      "type": "object"
+    },
+    "subject": {
+      "additionalProperties": true,
+      "properties": {
+        "address": {
+          "additionalProperties": false,
+          "properties": {
+            "city": {
+              "type": "string"
+            },
+            "postal": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "street": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "street",
+            "city",
+            "state",
+            "postal"
+          ],
+          "type": "object"
+        },
+        "business_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "dba": {
+          "type": "string"
+        },
+        "legal_name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "legal_name"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://veritas.example/schemas/attestation-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "attestation_id": {
+      "pattern": "^vat_[A-Za-z0-9]+$",
+      "type": "string"
+    },
+    "authorization": {
+      "$ref": "#/$defs/authorization"
+    },
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/claim"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "device_time": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "log": {
+      "additionalProperties": false,
+      "properties": {
+        "leaf_index": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "root": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "tree": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tree",
+        "leaf_index",
+        "root"
+      ],
+      "type": "object"
+    },
+    "protocol_version": {
+      "const": "1.1"
+    },
+    "signatures": {
+      "additionalProperties": false,
+      "properties": {
+        "business": {
+          "$ref": "#/$defs/signature"
+        },
+        "veritas": {
+          "$ref": "#/$defs/signature"
+        }
+      },
+      "required": [
+        "business",
+        "veritas"
+      ],
+      "type": "object"
+    },
+    "status": {
+      "enum": [
+        "ACTIVE",
+        "DISPUTED",
+        "CORRECTED",
+        "SUSPENDED",
+        "CLEARED",
+        "REVOKED"
+      ]
+    },
+    "subject": {
+      "$ref": "#/$defs/subject"
+    },
+    "valid_until": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "verification_method": {
+      "enum": [
+        "field_visit",
+        "document_review",
+        "api_check",
+        "phone_verification"
+      ]
+    },
+    "verified_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "verifier_id": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "attestation_id",
+    "protocol_version",
+    "status",
+    "subject",
+    "claims",
+    "verified_at",
+    "valid_until",
+    "verification_method",
+    "verifier_id",
+    "authorization",
+    "signatures"
+  ],
+  "title": "Veritas attestation object v1.1 (spec §2)",
+  "type": "object"
+}

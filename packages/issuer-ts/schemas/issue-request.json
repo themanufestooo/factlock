@@ -1,0 +1,70 @@
+{
+  "$id": "https://veritas.example/schemas/issue-request-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "POST /v1/businesses/{id}/attest request body. The server stamps verified_at, computes valid_until, applies both signatures, and appends to the log — clients never supply those.",
+  "properties": {
+    "attestation_id": {
+      "description": "Optional; server generates vat_<ulid> when omitted.",
+      "pattern": "^vat_[A-Za-z0-9]+$",
+      "type": "string"
+    },
+    "authorization": {
+      "type": "object",
+      "description": "Authorization record. Validated explicitly by the issuer (422 on any problem), not just by shape."
+    },
+    "business_key_id": {
+      "description": "Custodial business key_id to sign with (spec §3: v1 custodial).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "claims": {
+      "items": {
+        "$ref": "attestation-v1.json#/$defs/claim"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "device_time": {
+      "description": "Client-observed time; metadata ONLY. verified_at always comes from the server clock.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "subject": {
+      "$ref": "attestation-v1.json#/$defs/subject"
+    },
+    "verification_method": {
+      "enum": [
+        "field_visit",
+        "document_review",
+        "api_check",
+        "phone_verification"
+      ]
+    },
+    "verifier_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "veritas_key_id": {
+      "description": "Optional; defaults to the current active Veritas key.",
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "subject",
+    "claims",
+    "verification_method",
+    "verifier_id",
+    "business_key_id"
+  ],
+  "title": "Attestation issuance request v1",
+  "type": "object"
+}
