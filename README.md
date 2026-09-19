@@ -19,7 +19,14 @@ packages/
   core-ts/             T1 — TypeScript core: JCS (RFC 8785) + Ed25519  ✅ done
   core-py/             T1 — Python reference implementation            ✅ done
   vectors/             shared cross-language test vectors (hand-computed ground truth)
-apps/                  (T3+) issuance service, verification API, badge, MCP server
+  keystore-ts/         T2 — key management: KMS-shaped KeyStore, rotation, well-known keys ✅ done
+  issuer-ts/           T3 — attestation issuance: schema validation, server-stamped time,
+                       authorization gate, countersignature, log append        ✅ done
+  log-ts/              T4 — RFC 6962 Merkle transparency log + proofs + audit ✅ done
+  verify-api-ts/       T6 — public verification API: signatures, inclusion,
+                       lifecycle, freshness verdicts, rate-limited free tier  ✅ done
+  badge-ts/            T7 — hosted badge page + embeddable JS badge (EN/ES)   ✅ done
+apps/                  (T8+) MCP server
 ```
 
 ## T1 status — done, tested
@@ -40,14 +47,14 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
 ## Roadmap (from build tickets)
 
 - **T1** ✅ Canonical JSON + Ed25519 sign/verify (TS + Python)
-- **T2** Key management service (KMS/HSM, rotation, well-known keys)
-- **T3** Attestation issuance service (schema validation, server-stamped time, auth trail)
-- **T4** Merkle transparency log + inclusion proofs
-- **T5** Daily on-chain anchoring job
-- **T6** Public verification API (free tier, freshness verdicts)
-- **T7** Hosted badge page + embeddable badge (EN/ES)
-- **T8** MCP server (`veritas_check`)
-- **T9–T12** Verifier app, review console, disputes, re-verification scheduler
-- **T13–T14** Stripe subscriptions + metered API billing
+- **T2** ✅ Key management service (KMS/HSM-shaped, rotation, well-known keys)
+- **T3** ✅ Attestation issuance service (schema validation, server-stamped time, auth trail)
+- **T4** ✅ Merkle transparency log + inclusion proofs
+- **T5** ⏳ Daily on-chain anchoring job
+- **T6** ✅ Public verification API (free tier, freshness verdicts)
+- **T7** ✅ Hosted badge page + embeddable badge (EN/ES)
+- **T8** ⏳ MCP server (`veritas_check`)
+- **T9–T12** ⏳ Verifier app, review console, disputes, re-verification scheduler
+- **T13–T14** ⏳ Stripe subscriptions + metered API billing
 
-Critical path: T1 → T2 → T3 → T4 → T6 → T7.
+Critical path: T1 → T2 → T3 → T4 → T6 → T7 ✅ complete. Next: T8, T5.
