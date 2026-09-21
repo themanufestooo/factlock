@@ -7,7 +7,7 @@
  * anchored root and the hash chain.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { MerkleLog, fromHex } from "@veritas/merkle-log";
+import { MerkleLog, fromHex } from "@factlock/merkle-log";
 import { verifyChain } from "./chain.js";
 import type { AnchorLog } from "./types.js";
 

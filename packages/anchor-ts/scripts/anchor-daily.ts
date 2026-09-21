@@ -6,11 +6,11 @@
  * anchor chain, prints the root. See README for the cron/systemd entries.
  *
  *   node dist/scripts/anchor-daily.js \
- *     --journal /var/lib/veritas/log.jsonl \
- *     --anchors /var/lib/veritas/anchors.jsonl \
- *     [--date 2026-09-19] [--tree veritas-main] [--verify]
+ *     --journal /var/lib/factlock/log.jsonl \
+ *     --anchors /var/lib/factlock/anchors.jsonl \
+ *     [--date 2026-09-19] [--tree factlock-main] [--verify]
  */
-import { MerkleLog } from "@veritas/merkle-log";
+import { MerkleLog } from "@factlock/merkle-log";
 import { anchorDay } from "../src/anchor.js";
 import { verifyAnchorForDate } from "../src/verify.js";
 import { FileAnchorLog, LocalAnchorProvider } from "../src/providers/local.js";

@@ -2,7 +2,7 @@
  * Pluggable stores (T6). In-memory implementations for v1; the interfaces
  * are what the verifier depends on, so Postgres can slot in later.
  */
-import type { Attestation } from "@veritas/issuer";
+import type { Attestation } from "@factlock/issuer";
 import type {
   AttestationStore,
   LifecycleStatus,

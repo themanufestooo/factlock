@@ -42,7 +42,7 @@ test("full lifecycle: ACTIVE → DISPUTED → CORRECTED → SUSPENDED → REVOKE
     claims: [
       { type: "price", item: "service_call", amount: 9900, currency: "USD", disclosed: true },
     ],
-    authorization: authRecord("2"),
+    authorization_id: authRecord("2"),
   };
   const r1 = await resolveDispute(
     d1.dispute_id,
@@ -172,7 +172,7 @@ test("corrected without corrected_request → 422; unknown dispute → 404", asy
     (e: unknown) => e instanceof OpsError && e.status === 404,
   );
   await assert.rejects(
-    () => openDispute({ attestation_id: "vat_nope", opened_by: "rev_1", reason: "x" }, s.disputeDeps),
+    () => openDispute({ attestation_id: "fla_nope", opened_by: "rev_1", reason: "x" }, s.disputeDeps),
     (e: unknown) => e instanceof OpsError && e.status === 404,
   );
 });

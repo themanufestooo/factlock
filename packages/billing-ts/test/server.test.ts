@@ -153,7 +153,7 @@ test("api keys → ingest → usage summary with projection", async () => {
     const k = await post(s.base, "/v1/api-keys", { customer_id: "cus_1" });
     assert.equal(k.status, 201);
     const key_id = k.body.key_id as string;
-    assert.ok((k.body.secret as string).startsWith("veritas_sk_"));
+    assert.ok((k.body.secret as string).startsWith("factlock_sk_"));
 
     for (let i = 0; i < 60; i++) {
       const r = await post(s.base, "/v1/usage/ingest", { key_id, endpoint: "verify", units: 1 });

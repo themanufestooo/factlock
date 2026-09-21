@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from veritas_core import canonicalize, keypair_from_seed, sign, verify
+from factlock_core import canonicalize, keypair_from_seed, sign, verify
 
 VECTORS = json.loads(
     (Path(__file__).resolve().parent.parent.parent / "vectors" / "vectors.json")

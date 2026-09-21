@@ -6,9 +6,9 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
 
-import { SoftwareKeyStore } from "@veritas/keystore";
-import { MerkleLog } from "@veritas/merkle-log";
-import { issueAttestation } from "@veritas/issuer";
+import { SoftwareKeyStore } from "@factlock/keystore";
+import { MerkleLog } from "@factlock/merkle-log";
+import { issueAttestation, InMemoryAuthorizationStore, InMemoryEvidenceStore, digestClaims } from "@factlock/issuer";
 
 import {
   createVerifyServer,
@@ -36,11 +36,10 @@ async function get(path: string): Promise<{ status: number; headers: Headers; js
 
 before(async () => {
   const keystore = new SoftwareKeyStore();
-  await keystore.generateKey("veritas", "veritas");
+  await keystore.generateKey("factlock", "factlock");
   const bizRec = await keystore.generateKey("biz_rapido", "business");
   const log = new MerkleLog();
-  const att = await issueAttestation(
-    {
+  const request = {
       subject: { business_id: "biz_rapido", legal_name: "Rapido Plumbing LLC" },
       claims: [
         { type: "price", item: "service_call", amount: 8900, currency: "USD", disclosed: true },
@@ -48,17 +47,15 @@ before(async () => {
       ],
       verification_method: "field_visit",
       verifier_id: "ver_007",
-      authorization: {
-        auth_id: "auth_1",
-        session_id: "sess_1",
-        sms_confirmation_ref: "sms_1",
-        authorized_at: "2026-09-19T11:59:00Z",
-        authorized_by: "owner-on-file",
-      },
+      evidence_refs: ["evidence_verify_server"],
+      authorization_id: "auth_1",
       business_key_id: bizRec.key_id,
-    },
-    { keystore, log, clock: () => new Date(T0) },
-  );
+  };
+  const authorizations = new InMemoryAuthorizationStore();
+  const evidence = new InMemoryEvidenceStore();
+  authorizations.put({ authorization_id: "auth_1", business_id: "biz_rapido", principal: "owner_rapido", claim_digest: digestClaims(request.claims), method: "authenticated_session", authorized_at: "2026-09-19T11:59:00Z", authorized_by: "owner-on-file", expires_at: "2026-09-19T12:10:00Z" });
+  evidence.put({ evidence_ref: "evidence_verify_server", business_id: "biz_rapido", claim_types: ["price"], verified_at: "2026-09-19T11:58:00Z", expires_at: "2026-09-20T12:00:00Z", verification_method: "field_visit", verifier_id: "ver_007" });
+  const att = await issueAttestation(request, { keystore, log, clock: () => new Date(T0), authorizations, evidence }, { principal: "owner_rapido" });
   store = new InMemoryAttestationStore();
   await store.put(att);
   attId = att.attestation_id;
@@ -101,9 +98,9 @@ test("GET /v1/attestations/:id serves the attestation with redacted amounts", as
 });
 
 test("unknown id → 404 on both routes", async () => {
-  const v = await get("/v1/verify/vat_nope");
+  const v = await get("/v1/verify/fla_nope");
   assert.equal(v.status, 404);
-  const a = await get("/v1/attestations/vat_nope");
+  const a = await get("/v1/attestations/fla_nope");
   assert.equal(a.status, 404);
 });
 

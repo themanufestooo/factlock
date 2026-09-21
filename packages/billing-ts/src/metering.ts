@@ -59,7 +59,7 @@ export async function issueApiKey(
   clock: Clock = () => new Date(),
 ): Promise<{ key: ApiKey; secret: string }> {
   const id = `vk_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
-  const secret = `veritas_sk_${randomBytes(24).toString("base64url")}`;
+  const secret = `factlock_sk_${randomBytes(24).toString("base64url")}`;
   const key: ApiKey = {
     id,
     customer_id,

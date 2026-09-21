@@ -1,4 +1,4 @@
-/** Veritas badge — hosted page + embeddable JS badge (T7). */
+/** FactLock badge — hosted page + embeddable JS badge (T7). */
 export { createBadgeServer } from "./server.js";
 export type { BadgeServerOptions } from "./server.js";
 export {

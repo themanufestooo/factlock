@@ -1,13 +1,16 @@
-# Veritas — signed business-truth layer for AI agents
+# FactLock — signed business-truth layer for AI agents
 
-Veritas lets an AI agent verify a business claim **before money moves**: signed,
+FactLock lets an AI agent verify a business claim **before money moves**: signed,
 timestamped, publicly-auditable attestations (price, hours, license, availability),
-countersigned by Veritas after verification, logged in a Merkle transparency log
-with daily on-chain anchoring.
+countersigned by FactLock after verification and logged in a Merkle transparency
+log. The repository includes a hash-chained anchoring interface; production chain
+submission remains a deployment integration, not a shipped guarantee.
 
-- **Spec:** `docs/veritas-attestation-protocol-v1.1.md` (build-ready)
-- **Adversarial review:** `docs/veritas-redteam-v1.md`
-- **Build plan:** `docs/veritas-build-tickets.md` (T1–T14)
+- **Spec:** `docs/factlock-attestation-protocol-v1.1.md` (build-ready)
+- **Adversarial review:** `docs/factlock-redteam-v1.md`
+- **Build plan:** `docs/factlock-build-tickets.md` (T1–T14)
+- **Private-claim proposal:** `docs/factlock-private-claims-proposal.md`
+- **Landing page:** `site/dist/index.html` (static, dependency-free)
 
 Built by EYFE Services LLC (interim entity).
 
@@ -21,12 +24,13 @@ packages/
   vectors/             shared cross-language test vectors (hand-computed ground truth)
   keystore-ts/         T2 — key management: KMS-shaped KeyStore, rotation, well-known keys ✅ done
   issuer-ts/           T3 — attestation issuance: schema validation, server-stamped time,
-                       authorization gate, countersignature, log append        ✅ done
+                       one-time authorization + evidence gates, countersignature,
+                       log append                                               ✅ done
   log-ts/              T4 — RFC 6962 Merkle transparency log + proofs + audit ✅ done
   verify-api-ts/       T6 — public verification API: signatures, inclusion,
                        lifecycle, freshness verdicts, rate-limited free tier  ✅ done
   badge-ts/            T7 — hosted badge page + embeddable JS badge (EN/ES)   ✅ done
-  mcp-ts/              T8 — MCP server: veritas_check tool for AI agents       ✅ done
+  mcp-ts/              T8 — MCP server: factlock_check tool for AI agents       ✅ done
   anchor-ts/           T5 — daily anchoring: hash-chained anchor log of roots ✅ done
 ```
 
@@ -54,9 +58,9 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
 - **T5** ✅ Daily anchoring job (hash-chained anchor log; local + OTS-shaped providers)
 - **T6** ✅ Public verification API (free tier, freshness verdicts)
 - **T7** ✅ Hosted badge page + embeddable badge (EN/ES)
-- **T8** ✅ MCP server (`veritas_check`)
+- **T8** ✅ MCP server (`factlock_check`)
 - **T9–T12** ✅ Verifier app, review console, disputes (3rd-strike revocation), re-verification scheduler
 - **T13–T14** ✅ Stripe subscriptions + metered API billing
 
 Critical path: T1 → T2 → T3 → T4 → T6 → T7 ✅ complete. T8 + T5 ✅ complete.
-All 14 build tickets ✅ complete — 286/286 tests green.
+All 14 build tickets ✅ complete — 289/289 tests green.

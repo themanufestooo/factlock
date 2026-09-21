@@ -2,8 +2,8 @@
  * Indexed attestation store (T8) — in-memory v1.
  * Wraps InMemoryAttestationStore and tracks the latest attestation per business.
  */
-import { InMemoryAttestationStore } from "@veritas/verify-api";
-import type { Attestation } from "@veritas/issuer";
+import { InMemoryAttestationStore } from "@factlock/verify-api";
+import type { Attestation } from "@factlock/issuer";
 import { bizId } from "./tool.js";
 import type { BusinessIndex } from "./tool.js";
 

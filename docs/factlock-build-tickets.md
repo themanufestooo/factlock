@@ -1,4 +1,4 @@
-# Veritas — Build Tickets (from Protocol v1 + Red-Team)
+# FactLock — Build Tickets (from Protocol v1 + Red-Team)
 
 **For:** contract dev(s) · **Stack suggestion:** TypeScript (API) + Python (reference lib), Postgres, S3-compatible storage, KMS/HSM via cloud provider.
 **Conventions:** every ticket lists scope, acceptance criteria (AC), out of scope, and estimate in dev-days. "Done" = AC met + tests + README section.
@@ -17,7 +17,7 @@
 **Estimate:** 3 days.
 
 ### T2 — Key management service
-**Scope:** keypair generation (business + Veritas keys), `key_id` registry, `/.well-known/veritas-keys.json` publication, rotation protocol (new key_id, grace period, old key sunset).
+**Scope:** keypair generation (business + FactLock keys), `key_id` registry, `/.well-known/factlock-keys.json` publication, rotation protocol (new key_id, grace period, old key sunset).
 **AC:**
 - Keys generated in KMS/HSM; private key material never leaves it.
 - Rotation completes without breaking verification of attestations signed by the old key.
@@ -26,7 +26,7 @@
 **Estimate:** 4 days.
 
 ### T3 — Attestation issuance service
-**Scope:** `POST /v1/businesses/{id}/attest` (authenticated): validate against JSON schema v1, attach server-stamped `verified_at`, collect business authorization record (login + SMS ref), apply Veritas countersignature, append to transparency log, return attestation.
+**Scope:** `POST /v1/businesses/{id}/attest` (authenticated): validate against JSON schema v1, attach server-stamped `verified_at`, collect business authorization record (login + SMS ref), apply FactLock countersignature, append to transparency log, return attestation.
 **AC:**
 - Invalid schema rejected with field-level errors.
 - `verified_at` = server time, not client time (test: skewed client clock still yields server time).
@@ -79,8 +79,8 @@
 **Out of scope:** business dashboard (T10 covers ops side).
 **Estimate:** 5 days.
 
-### T8 — MCP server (`veritas_check`)
-**Scope:** MCP server exposing `veritas_check(business_id, claim_types[])` → claims + freshness verdict + proof bundle.
+### T8 — MCP server (`factlock_check`)
+**Scope:** MCP server exposing `factlock_check(business_id, claim_types[])` → claims + freshness verdict + proof bundle.
 **AC:**
 - Works end-to-end in Claude and ChatGPT agent environments (recorded demo).
 - Returns machine-readable verdicts; never throws on STALE (returns verdict + age).

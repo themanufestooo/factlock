@@ -5,10 +5,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { SoftwareKeyStore } from "@veritas/keystore";
-import { MerkleLog } from "@veritas/merkle-log";
-import { issueAttestation } from "@veritas/issuer";
-import type { Attestation } from "@veritas/issuer";
+import { SoftwareKeyStore } from "@factlock/keystore";
+import { MerkleLog } from "@factlock/merkle-log";
+import { issueAttestation, InMemoryAuthorizationStore, InMemoryEvidenceStore, digestClaims } from "@factlock/issuer";
+import type { Attestation } from "@factlock/issuer";
 
 import {
   verifyAttestation,
@@ -32,11 +32,10 @@ interface Harness {
 
 async function makeHarness(now: Date = T0): Promise<Harness> {
   const keystore = new SoftwareKeyStore();
-  await keystore.generateKey("veritas", "veritas");
+  await keystore.generateKey("factlock", "factlock");
   const bizRec = await keystore.generateKey("biz_rapido", "business");
   const log = new MerkleLog();
-  const att = await issueAttestation(
-    {
+  const request = {
       subject: { business_id: "biz_rapido", legal_name: "Rapido Plumbing LLC" },
       claims: [
         { type: "price", item: "service_call", amount: 8900, currency: "USD", disclosed: true },
@@ -45,17 +44,15 @@ async function makeHarness(now: Date = T0): Promise<Harness> {
       ],
       verification_method: "field_visit",
       verifier_id: "ver_007",
-      authorization: {
-        auth_id: "auth_1",
-        session_id: "sess_1",
-        sms_confirmation_ref: "sms_1",
-        authorized_at: "2026-09-19T11:59:00Z",
-        authorized_by: "owner-on-file",
-      },
+      evidence_refs: ["evidence_verify"],
+      authorization_id: "auth_1",
       business_key_id: bizRec.key_id,
-    },
-    { keystore, log, clock: () => new Date(now) },
-  );
+  };
+  const authorizations = new InMemoryAuthorizationStore();
+  const evidence = new InMemoryEvidenceStore();
+  authorizations.put({ authorization_id: "auth_1", business_id: "biz_rapido", principal: "owner_rapido", claim_digest: digestClaims(request.claims), method: "authenticated_session", authorized_at: "2026-09-19T11:59:00Z", authorized_by: "owner-on-file", expires_at: new Date(now.getTime() + 600_000).toISOString() });
+  evidence.put({ evidence_ref: "evidence_verify", business_id: "biz_rapido", claim_types: ["price", "hours"], verified_at: "2026-09-19T11:58:00Z", expires_at: new Date(now.getTime() + 86_400_000).toISOString(), verification_method: "field_visit", verifier_id: "ver_007" });
+  const att = await issueAttestation(request, { keystore, log, clock: () => new Date(now), authorizations, evidence }, { principal: "owner_rapido" });
   const store = new InMemoryAttestationStore();
   await store.put(att);
   return {
@@ -164,8 +161,9 @@ test("freshness boundaries: AGING at exactly 70%, STALE at 100%", async () => {
   );
   assert.ok(at30);
   assert.equal(at30.freshness, "STALE");
-  assert.equal(at30.expired, false); // exactly AT valid_until: stale, not expired
-  assert.match(at30.message, /STALE/);
+  assert.equal(at30.expired, true); // fail closed at the exact validity boundary
+  assert.equal(at30.valid, false);
+  assert.match(at30.message, /EXPIRED/);
 });
 
 test("past valid_until: expired and invalid", async () => {
@@ -212,7 +210,7 @@ test("REVOKED override: rejected", async () => {
 
 test("unknown attestation id → null", async () => {
   const h = await makeHarness();
-  assert.equal(await verifyAttestation("vat_nope", h.store, deps(h)), null);
+  assert.equal(await verifyAttestation("fla_nope", h.store, deps(h)), null);
 });
 
 test("verdictFor unit boundaries", () => {

@@ -4,7 +4,7 @@
       "additionalProperties": false,
       "description": "Business authorization trail (spec §3.2). Required for countersignature.",
       "properties": {
-        "auth_id": {
+        "authorization_id": {
           "minLength": 1,
           "type": "string"
         },
@@ -17,19 +17,17 @@
             "owner-on-file"
           ]
         },
-        "session_id": {
-          "minLength": 1,
-          "type": "string"
-        },
-        "sms_confirmation_ref": {
-          "minLength": 1,
-          "type": "string"
+        "method": {
+          "enum": [
+            "authenticated_session",
+            "signed_delegation",
+            "operator_approval"
+          ]
         }
       },
       "required": [
-        "auth_id",
-        "session_id",
-        "sms_confirmation_ref",
+        "authorization_id",
+        "method",
         "authorized_at",
         "authorized_by"
       ],
@@ -287,12 +285,12 @@
       "type": "object"
     }
   },
-  "$id": "https://veritas.example/schemas/attestation-v1.json",
+  "$id": "https://factlock.example/schemas/attestation-v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
     "attestation_id": {
-      "pattern": "^vat_[A-Za-z0-9]+$",
+      "pattern": "^fla_[A-Za-z0-9]+$",
       "type": "string"
     },
     "authorization": {
@@ -348,13 +346,13 @@
         "business": {
           "$ref": "#/$defs/signature"
         },
-        "veritas": {
+        "factlock": {
           "$ref": "#/$defs/signature"
         }
       },
       "required": [
         "business",
-        "veritas"
+        "factlock"
       ],
       "type": "object"
     },
@@ -405,6 +403,6 @@
     "authorization",
     "signatures"
   ],
-  "title": "Veritas attestation object v1.1 (spec §2)",
+  "title": "FactLock attestation object v1.1 (spec §2)",
   "type": "object"
 }

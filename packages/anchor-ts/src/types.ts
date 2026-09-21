@@ -6,10 +6,10 @@
  * historical root and check it against the chain.
  */
 export interface AnchorRecord {
-  version: "veritas-anchor/1";
+  version: "factlock-anchor/1";
   /** UTC date this anchor covers, YYYY-MM-DD. */
   date: string;
-  /** Transparency-log tree name (default "veritas-main"). */
+  /** Transparency-log tree name (default "factlock-main"). */
   tree: string;
   /** Hex Merkle root as of this anchor. */
   root: string;

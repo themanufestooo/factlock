@@ -1,4 +1,4 @@
-"""Ed25519 signing/verification for the Veritas attestation protocol.
+"""Ed25519 signing/verification for the FactLock attestation protocol.
 
 Thin wrapper over libsodium (PyNaCl). Signatures are deterministic:
 the same key + canonical bytes always yield the same signature, which is

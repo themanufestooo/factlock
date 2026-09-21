@@ -1,4 +1,4 @@
-"""JCS (RFC 8785) canonicalization for the Veritas attestation protocol.
+"""JCS (RFC 8785) canonicalization for the FactLock attestation protocol.
 
 Produces the canonical JSON byte representation that gets signed.
 Numbers follow ECMAScript Number::toString semantics (matching what the

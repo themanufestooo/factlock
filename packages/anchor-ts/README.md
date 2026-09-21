@@ -1,12 +1,12 @@
-# @veritas/anchor (T5)
+# @factlock/anchor (T5)
 
 Daily anchoring of the Merkle transparency-log root. One anchor record per day:
 
 ```json
 {
-  "version": "veritas-anchor/1",
+  "version": "factlock-anchor/1",
   "date": "2026-09-19",
-  "tree": "veritas-main",
+  "tree": "factlock-main",
   "root": "9f2c…",
   "leaf_count": 1042,
   "prev_anchor_hash": "b71d…",
@@ -28,19 +28,19 @@ reproduces the log's exact state on that date (`verifyAnchorForDate`).
 ```bash
 cd packages/anchor-ts && npm install && npm run build
 node dist/scripts/anchor-daily.js \
-  --journal /var/lib/veritas/log.jsonl \
-  --anchors /var/lib/veritas/anchors.jsonl \
-  [--date 2026-09-19] [--tree veritas-main] [--verify]
+  --journal /var/lib/factlock/log.jsonl \
+  --anchors /var/lib/factlock/anchors.jsonl \
+  [--date 2026-09-19] [--tree factlock-main] [--verify]
 ```
 
 Cron (daily 02:00 UTC):
 
 ```
-0 2 * * * /usr/bin/node /opt/veritas/packages/anchor-ts/dist/scripts/anchor-daily.js --journal /var/lib/veritas/log.jsonl --anchors /var/lib/veritas/anchors.jsonl --verify >> /var/log/veritas-anchor.log 2>&1
+0 2 * * * /usr/bin/node /opt/factlock/packages/anchor-ts/dist/scripts/anchor-daily.js --journal /var/lib/factlock/log.jsonl --anchors /var/lib/factlock/anchors.jsonl --verify >> /var/log/factlock-anchor.log 2>&1
 ```
 
-systemd alternative: a `veritas-anchor.service` (oneshot, same ExecStart) plus a
-`veritas-anchor.timer` with `OnCalendar=daily`.
+systemd alternative: a `factlock-anchor.service` (oneshot, same ExecStart) plus a
+`factlock-anchor.timer` with `OnCalendar=daily`.
 
 Exit codes: 0 anchored (+ verified with `--verify`), 1 verification failed,
 2 bad CLI args.
@@ -50,7 +50,7 @@ Exit codes: 0 anchored (+ verified with `--verify`), 1 verification failed,
 - **local** (default): appends to the anchor JSONL. Free, offline, sufficient
   for dev and for v1 while the log itself is the trust anchor.
 - **opentimestamps** (`src/providers/opentimestamps.ts`): shape of the
-  production wiring — submits `SHA256("veritas-ots/1" || record_hash)` to
+  production wiring — submits `SHA256("factlock-ots/1" || record_hash)` to
   public OTS calendars for a Bitcoin-anchored proof. **Disabled by default**;
   `anchor()` throws unless constructed with `{ enabled: true, calendars }`,
   so tests and dev runs can never broadcast or spend. No network calls in

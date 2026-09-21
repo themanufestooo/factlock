@@ -8,7 +8,7 @@
 import { openDispute, type DisputeDeps } from "./disputes.js";
 import { OpsError, type Flag, type FlagDecision, type FlagSource } from "./types.js";
 import type { AuditLog, FlagStore } from "./stores.js";
-import type { AttestationStore } from "@veritas/verify-api";
+import type { AttestationStore } from "@factlock/verify-api";
 
 const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
 

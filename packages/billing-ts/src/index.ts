@@ -1,4 +1,4 @@
-/** Veritas billing — Stripe subscriptions, metered API billing, dispute deposits (T13/T14). */
+/** FactLock billing — Stripe subscriptions, metered API billing, dispute deposits (T13/T14). */
 export { getPlan, listPlans, setPlanPrice, GRACE_PERIOD_DAYS, DISPUTE_DEPOSIT_CENTS } from "./plans.js";
 export {
   createSubscription,

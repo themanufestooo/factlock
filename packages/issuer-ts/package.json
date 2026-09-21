@@ -1,12 +1,12 @@
 {
   "dependencies": {
-    "@veritas/attestation-core": "file:../core-ts",
-    "@veritas/keystore": "file:../keystore-ts",
-    "@veritas/merkle-log": "file:../log-ts",
+    "@factlock/attestation-core": "file:../core-ts",
+    "@factlock/keystore": "file:../keystore-ts",
+    "@factlock/merkle-log": "file:../log-ts",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1"
   },
-  "description": "Veritas attestation issuance service \u2014 schema validation, server-stamped time, authorization gate, countersignature, log append (T3)",
+  "description": "FactLock attestation issuance service \u2014 schema validation, server-stamped time, authorization gate, countersignature, log append (T3)",
   "devDependencies": {
     "@types/node": "^22.9.0",
     "typescript": "^5.6.3"
@@ -18,9 +18,9 @@
     }
   },
   "main": "dist/src/index.js",
-  "name": "@veritas/issuer",
+  "name": "@factlock/issuer",
   "scripts": {
-    "build": "tsc && cp -r schemas dist/schemas",
+    "build": "rm -rf dist && tsc && cp -r schemas dist/schemas",
     "test": "npm run build && node --test dist/test/*.test.js"
   },
   "type": "module",

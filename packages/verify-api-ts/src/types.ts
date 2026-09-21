@@ -3,9 +3,9 @@
  *
  * Implements spec §5 (verification algorithm) as a free, keyless HTTP API.
  */
-import type { InclusionProof } from "@veritas/merkle-log";
-import type { Attestation } from "@veritas/issuer";
-import type { KeyStore } from "@veritas/keystore";
+import type { InclusionProof } from "@factlock/merkle-log";
+import type { Attestation } from "@factlock/issuer";
+import type { KeyStore } from "@factlock/keystore";
 
 export type FreshnessVerdict = "FRESH" | "AGING" | "STALE";
 
@@ -41,7 +41,7 @@ export interface VerificationResult {
   signatures_ok: boolean;
   inclusion_ok: boolean;
   expired: boolean;
-  key_ids: { business: string; veritas: string };
+  key_ids: { business: string; factlock: string };
   /** Claims with undisclosed price amounts redacted (spec §2). */
   claims: Array<Record<string, unknown>>;
   claims_freshness: ClaimFreshness[];

@@ -20,6 +20,7 @@ async function serve() {
     keystore: s.keystore,
     log: s.log,
     cdn: s.cdn,
+    issueCorrection: s.issue,
     clock: s.clock,
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));

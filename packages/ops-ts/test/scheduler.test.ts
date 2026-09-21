@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dueForReverification, DUE_FRACTION } from "../src/scheduler.js";
 import { BIZ, T0, DAY, makeStack } from "./helpers.js";
-import type { Attestation } from "@veritas/issuer";
+import type { Attestation } from "@factlock/issuer";
 
 test("DUE_FRACTION is the 70% AGING threshold", () => {
   assert.equal(DUE_FRACTION, 0.7);

@@ -6,9 +6,10 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
 
-import { SoftwareKeyStore } from "@veritas/keystore";
-import { MerkleLog } from "@veritas/merkle-log";
+import { SoftwareKeyStore } from "@factlock/keystore";
+import { MerkleLog } from "@factlock/merkle-log";
 import { createIssuerServer } from "../src/server.js";
+import { InMemoryAuthorizationStore, InMemoryEvidenceStore, digestClaims } from "../src/guards.js";
 
 const FIXED_NOW = new Date("2026-09-19T12:00:05Z");
 const TOKEN = "test-token-123";
@@ -16,6 +17,8 @@ const TOKEN = "test-token-123";
 let server: Server;
 let base: string;
 let bizKeyId: string;
+const authorizations = new InMemoryAuthorizationStore();
+const evidence = new InMemoryEvidenceStore();
 
 function body(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -25,19 +28,30 @@ function body(overrides: Record<string, unknown> = {}): Record<string, unknown> 
     ],
     verification_method: "field_visit",
     verifier_id: "ver_007",
-    authorization: {
-      auth_id: "auth_1",
-      session_id: "sess_1",
-      sms_confirmation_ref: "sms_1",
-      authorized_at: "2026-09-19T11:59:58Z",
-      authorized_by: "owner-on-file",
-    },
+    evidence_refs: ["evidence:server-test"],
+    authorization_id: "auth_1",
     business_key_id: bizKeyId,
     ...overrides,
   };
 }
 
 async function post(path: string, payload: unknown, token?: string) {
+  if (typeof payload === "object" && payload) {
+    const p = payload as Record<string, unknown>;
+    const claims = (p.claims ?? []) as Array<Record<string, unknown>>;
+    const businessId = String((p.subject as Record<string, unknown> | undefined)?.business_id ?? "");
+    const authorizationId = String(p.authorization_id ?? "");
+    if (authorizationId) authorizations.put({
+      authorization_id: authorizationId, business_id: businessId, principal: "api-client",
+      claim_digest: digestClaims(claims), method: "authenticated_session",
+      authorized_at: "2026-09-19T11:59:58Z", authorized_by: "owner-on-file", expires_at: "2026-09-19T12:10:00Z",
+    });
+    for (const ref of (p.evidence_refs ?? []) as string[]) evidence.put({
+      evidence_ref: ref, business_id: businessId, claim_types: claims.map((claim) => String(claim.type)),
+      verified_at: "2026-09-19T11:58:00Z", expires_at: "2026-09-20T12:00:00Z",
+      verification_method: String(p.verification_method ?? ""), verifier_id: String(p.verifier_id ?? ""),
+    });
+  }
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (token) headers.authorization = `Bearer ${token}`;
   const res = await fetch(`${base}${path}`, {
@@ -50,13 +64,15 @@ async function post(path: string, payload: unknown, token?: string) {
 
 before(async () => {
   const keystore = new SoftwareKeyStore();
-  await keystore.generateKey("veritas", "veritas");
+  await keystore.generateKey("factlock", "factlock");
   bizKeyId = (await keystore.generateKey("biz_rapido", "business")).key_id;
   server = createIssuerServer({
     keystore,
     log: new MerkleLog(),
     clock: () => new Date(FIXED_NOW),
     authTokens: [TOKEN], // dev stub
+    authorizations,
+    evidence,
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const addr = server.address();
@@ -75,9 +91,9 @@ test("POST /v1/businesses/{id}/attest -> 201 with attestation", async () => {
   assert.equal(status, 201);
   assert.equal(json.status, "ACTIVE");
   assert.equal(json.verified_at, "2026-09-19T12:00:05Z");
-  assert.ok((json as { attestation_id: string }).attestation_id.startsWith("vat_"));
+  assert.ok((json as { attestation_id: string }).attestation_id.startsWith("fla_"));
   const log = json.log as { tree: string; leaf_index: number; root: string };
-  assert.equal(log.tree, "veritas-main");
+  assert.equal(log.tree, "factlock-main");
   assert.match(log.root, /^[0-9a-f]{64}$/);
 });
 
@@ -102,12 +118,12 @@ test("invalid JSON -> 400", async () => {
   assert.equal(json.error, "invalid_json");
 });
 
-test("missing authorization in body -> 422", async () => {
+test("missing authorization id in body -> 400", async () => {
   const b = body();
-  delete b.authorization;
+  delete b.authorization_id;
   const { status, json } = await post("/v1/businesses/biz_rapido/attest", b, TOKEN);
-  assert.equal(status, 422);
-  assert.equal(json.error, "authorization_required");
+  assert.equal(status, 400);
+  assert.equal(json.error, "schema_validation");
 });
 
 test("schema violation -> 400 with field errors", async () => {
@@ -125,8 +141,8 @@ test("path business id vs subject mismatch -> 400", async () => {
   assert.equal(json.error, "business_mismatch");
 });
 
-test("GET /.well-known/veritas-keys.json -> key directory", async () => {
-  const res = await fetch(`${base}/.well-known/veritas-keys.json`);
+test("GET /.well-known/factlock-keys.json -> key directory", async () => {
+  const res = await fetch(`${base}/.well-known/factlock-keys.json`);
   assert.equal(res.status, 200);
   const doc = (await res.json()) as {
     generated_at: string;

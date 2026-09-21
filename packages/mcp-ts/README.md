@@ -1,6 +1,6 @@
-# @veritas/mcp-server (T8)
+# @factlock/mcp-server (T8)
 
-Model Context Protocol server exposing **`veritas_check`** — one tool that lets
+Model Context Protocol server exposing **`factlock_check`** — one tool that lets
 an AI agent verify a business's attested claims (price, hours, license,
 availability) **before quoting a price, booking an appointment, or paying an
 invoice** based on those claims.
@@ -14,12 +14,12 @@ returns a compact verdict:
   "valid": true,
   "status": "ACTIVE",
   "freshness": "FRESH",
-  "attestation_id": "vat_01J...",
+  "attestation_id": "fla_01J...",
   "business": { "id": "biz_rapido", "name": "Rapido Plumbing LLC" },
   "summary_line": "VERIFIED — ...",
   "reason": null,
   "claims": [{ "type": "price", "item": "service_call", "verdict": "FRESH" }],
-  "details_url": "https://verify.veritas.example/v1/verify/vat_01J..."
+  "details_url": "https://verify.factlock.example/v1/verify/fla_01J..."
 }
 ```
 
@@ -33,8 +33,8 @@ returns a compact verdict:
 
 ```bash
 cd packages/mcp-ts && npm install && npm run build
-VERITAS_DATA_DIR=/var/lib/veritas \
-VERITAS_PUBLIC_BASE_URL=https://verify.veritas.example \
+FACTLOCK_DATA_DIR=/var/lib/factlock \
+FACTLOCK_PUBLIC_BASE_URL=https://verify.factlock.example \
 npm start
 ```
 
@@ -53,12 +53,12 @@ Data directory layout (created if missing):
 ```json
 {
   "mcpServers": {
-    "veritas": {
+    "factlock": {
       "command": "node",
-      "args": ["/opt/veritas/packages/mcp-ts/dist/src/bin.js"],
+      "args": ["/opt/factlock/packages/mcp-ts/dist/src/bin.js"],
       "env": {
-        "VERITAS_DATA_DIR": "/var/lib/veritas",
-        "VERITAS_PUBLIC_BASE_URL": "https://verify.veritas.example"
+        "FACTLOCK_DATA_DIR": "/var/lib/factlock",
+        "FACTLOCK_PUBLIC_BASE_URL": "https://verify.factlock.example"
       }
     }
   }

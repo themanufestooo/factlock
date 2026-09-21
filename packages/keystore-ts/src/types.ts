@@ -1,7 +1,7 @@
 /**
  * Key management types (T2).
  *
- * v1 is custodial: Veritas generates and holds business keypairs in an
+ * v1 is custodial: FactLock generates and holds business keypairs in an
  * HSM/KMS; the business authorizes use via a verified channel (login + SMS).
  * The protocol says this plainly (spec §1.1, §3) — the safety property is
  * *detectability* via the authorization trail + transparency log, not
@@ -9,13 +9,13 @@
  * self-custody / bring-your-own-key.
  */
 
-export type KeyKind = "business" | "veritas";
+export type KeyKind = "business" | "factlock";
 export type KeyStatus = "active" | "grace" | "retired";
 
 /** One row of the key_id registry. Serialized to JSONL, one per line. */
 export interface KeyRecord {
   key_id: string;
-  /** business_id, or "veritas" for Veritas signing keys. */
+  /** business_id, or "factlock" for FactLock signing keys. */
   owner: string;
   kind: KeyKind;
   alg: "Ed25519";
@@ -81,7 +81,7 @@ export interface KeyStore {
   activeKey(owner: string, kind: KeyKind): Promise<KeyRecord | null>;
 }
 
-/** `/.well-known/veritas-keys.json` document shape. */
+/** `/.well-known/factlock-keys.json` document shape. */
 export interface WellKnownKeys {
   generated_at: string;
   keys: Array<{

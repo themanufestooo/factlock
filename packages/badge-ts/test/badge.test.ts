@@ -7,18 +7,18 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import type { Server } from "node:http";
 
-import { SoftwareKeyStore } from "@veritas/keystore";
-import { MerkleLog } from "@veritas/merkle-log";
-import { issueAttestation } from "@veritas/issuer";
+import { SoftwareKeyStore } from "@factlock/keystore";
+import { MerkleLog } from "@factlock/merkle-log";
+import { issueAttestation, InMemoryAuthorizationStore, InMemoryEvidenceStore, digestClaims } from "@factlock/issuer";
 import {
   InMemoryAttestationStore,
   InMemoryStatusRegistry,
-} from "@veritas/verify-api";
+} from "@factlock/verify-api";
 
 import { badgeScript, createBadgeServer } from "../src/index.js";
 
 const T0 = new Date("2026-09-19T12:00:00Z");
-const API_BASE = "https://api.veritas.example";
+const API_BASE = "https://api.factlock.example";
 
 let server: Server;
 let base: string;
@@ -29,11 +29,10 @@ let attXss: string;
 let statuses: InMemoryStatusRegistry;
 
 async function issue(
-  ctx: { keystore: SoftwareKeyStore; log: MerkleLog; store: InMemoryAttestationStore; bizKeyId: string },
+  ctx: { keystore: SoftwareKeyStore; log: MerkleLog; store: InMemoryAttestationStore; bizKeyId: string; authorizations: InMemoryAuthorizationStore; evidence: InMemoryEvidenceStore },
   legalName: string,
 ): Promise<string> {
-  const att = await issueAttestation(
-    {
+  const request = {
       subject: { business_id: "biz_rapido", legal_name: legalName },
       claims: [
         { type: "price", item: "service_call", amount: 8900, currency: "USD", disclosed: true },
@@ -42,17 +41,13 @@ async function issue(
       ],
       verification_method: "field_visit",
       verifier_id: "ver_007",
-      authorization: {
-        auth_id: `auth_${Math.random().toString(36).slice(2)}`,
-        session_id: "sess_1",
-        sms_confirmation_ref: "sms_1",
-        authorized_at: "2026-09-19T11:59:00Z",
-        authorized_by: "owner-on-file",
-      },
+      evidence_refs: [`evidence_${Math.random().toString(36).slice(2)}`],
+      authorization_id: `auth_${Math.random().toString(36).slice(2)}`,
       business_key_id: ctx.bizKeyId,
-    },
-    { keystore: ctx.keystore, log: ctx.log, clock: () => new Date(T0) },
-  );
+  };
+  ctx.authorizations.put({ authorization_id: request.authorization_id, business_id: "biz_rapido", principal: "owner_rapido", claim_digest: digestClaims(request.claims), method: "authenticated_session", authorized_at: "2026-09-19T11:59:00Z", authorized_by: "owner-on-file", expires_at: "2026-09-19T12:10:00Z" });
+  ctx.evidence.put({ evidence_ref: request.evidence_refs[0], business_id: "biz_rapido", claim_types: ["price", "license"], verified_at: "2026-09-19T11:58:00Z", expires_at: "2026-09-20T12:00:00Z", verification_method: "field_visit", verifier_id: "ver_007" });
+  const att = await issueAttestation(request, { keystore: ctx.keystore, log: ctx.log, clock: () => new Date(T0), authorizations: ctx.authorizations, evidence: ctx.evidence }, { principal: "owner_rapido" });
   await ctx.store.put(att);
   return att.attestation_id;
 }
@@ -67,12 +62,14 @@ async function get(
 
 before(async () => {
   const keystore = new SoftwareKeyStore();
-  await keystore.generateKey("veritas", "veritas");
+  await keystore.generateKey("factlock", "factlock");
   const bizRec = await keystore.generateKey("biz_rapido", "business");
   const log = new MerkleLog();
   const store = new InMemoryAttestationStore();
+  const authorizations = new InMemoryAuthorizationStore();
+  const evidence = new InMemoryEvidenceStore();
   statuses = new InMemoryStatusRegistry();
-  const ctx = { keystore, log, store, bizKeyId: bizRec.key_id };
+  const ctx = { keystore, log, store, bizKeyId: bizRec.key_id, authorizations, evidence };
 
   attActive = await issue(ctx, "Rapido Plumbing LLC");
   attDisputed = await issue(ctx, "Rapido Plumbing LLC");
@@ -112,7 +109,7 @@ test("ACTIVE badge page: business, disclosed price, no undisclosed amounts", asy
   const { status, text } = await get(`/badge/${attActive}`);
   assert.equal(status, 200);
   assert.match(text, /Rapido Plumbing LLC/);
-  assert.match(text, /Verified by Veritas/);
+  assert.match(text, /Verified by FactLock/);
   assert.match(text, /\$89\.00/); // disclosed amount shown
   assert.ok(!text.includes("$5.00"), "undisclosed amount must not appear");
   assert.match(text, /details withheld/);
@@ -124,7 +121,7 @@ test("DISPUTED badge shows the UNDER REVIEW banner", async () => {
   const { status, text } = await get(`/badge/${attDisputed}`);
   assert.equal(status, 200);
   assert.match(text, /UNDER REVIEW/);
-  assert.match(text, /treated as untrusted|treat these claims as untrusted/);
+  assert.match(text, /treated as untrusted|treat these claims as untrusted/i);
 });
 
 test("REVOKED badge shows the revoked banner", async () => {
@@ -144,7 +141,7 @@ test("business names are HTML-escaped (XSS probe)", async () => {
 test("?lang=es renders Spanish copy", async () => {
   const { status, text } = await get(`/badge/${attActive}?lang=es`);
   assert.equal(status, 200);
-  assert.match(text, /Verificado por Veritas/);
+  assert.match(text, /Verificado por FactLock/);
   assert.match(text, /precios verificados/);
   assert.match(text, /Ver verificación completa/);
 });
@@ -152,11 +149,11 @@ test("?lang=es renders Spanish copy", async () => {
 test("Accept-Language: es falls back to Spanish", async () => {
   const { status, text } = await get(`/badge/${attActive}`, { "accept-language": "es-ES,es;q=0.9" });
   assert.equal(status, 200);
-  assert.match(text, /Verificado por Veritas/);
+  assert.match(text, /Verificado por FactLock/);
 });
 
 test("unknown id → localized 404 page", async () => {
-  const { status, text } = await get("/badge/vat_nope?lang=es");
+  const { status, text } = await get("/badge/fla_nope?lang=es");
   assert.equal(status, 404);
   assert.match(text, /Certificación no encontrada/);
 });
@@ -167,7 +164,7 @@ test("/badge.js: javascript, < 15KB, embed hooks present", async () => {
   assert.match(headers.get("content-type") ?? "", /javascript/);
   assert.match(headers.get("access-control-allow-origin") ?? "", /\*/);
   assert.ok(Buffer.byteLength(text, "utf-8") < 15 * 1024, `badge.js too big: ${text.length}`);
-  assert.match(text, /data-veritas-badge/);
+  assert.match(text, /data-factlock-badge/);
   assert.match(text, /\/badge\/data\//);
   assert.ok(!text.includes("document.cookie"), "embed script must not touch cookies");
 });
@@ -179,7 +176,7 @@ test("/badge/data/:id: CORS-open JSON with precomputed display fields", async ()
   const d = JSON.parse(text) as Record<string, unknown>;
   assert.equal(d.attestation_id, attActive);
   assert.equal(d.status, "ACTIVE");
-  assert.equal(d.verified_by, "Verificado por Veritas");
+  assert.equal(d.verified_by, "Verificado por FactLock");
   assert.ok(String(d.verify_url).startsWith(API_BASE + "/v1/verify/"));
   const prices = d.prices as { disclosed: unknown[]; attested_count: number; withheld_count: number };
   assert.equal(prices.attested_count, 2);
@@ -212,7 +209,7 @@ test("badge.js renders into a container (DOM-stub smoke test)", async () => {
     freshness: "FRESH",
     freshness_word: "Fresh",
     verify_url: `${API_BASE}/v1/verify/${attActive}`,
-    verified_by: "Verified by Veritas",
+    verified_by: "Verified by FactLock",
     dot: "#16a34a",
   };
   const context = {
@@ -228,7 +225,7 @@ test("badge.js renders into a container (DOM-stub smoke test)", async () => {
   for (let i = 0; i < 10 && !rendered; i++) {
     await new Promise((r) => setTimeout(r, 10));
   }
-  assert.match(rendered, /Verified by Veritas/);
+  assert.match(rendered, /Verified by FactLock/);
   assert.match(rendered, /Fresh/);
   assert.ok(rendered.includes(API_BASE), "badge links to the verification API");
 });

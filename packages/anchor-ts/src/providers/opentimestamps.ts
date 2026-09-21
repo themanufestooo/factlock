@@ -19,10 +19,10 @@ export interface OtsOptions {
   enabled?: boolean;
 }
 
-/** Digest submitted to the calendar: SHA256("veritas-ots/1" || record_hash). */
+/** Digest submitted to the calendar: SHA256("factlock-ots/1" || record_hash). */
 export function otsDigestHex(recordHashHex: string): string {
   const h = createHash("sha256");
-  h.update(Buffer.from("veritas-ots/1", "utf-8"));
+  h.update(Buffer.from("factlock-ots/1", "utf-8"));
   h.update(Buffer.from(recordHashHex, "hex"));
   return h.digest("hex");
 }

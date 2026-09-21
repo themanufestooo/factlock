@@ -1,4 +1,4 @@
-/** Veritas daily anchoring — TypeScript (T5). */
+/** FactLock daily anchoring — TypeScript (T5). */
 export { anchorDay } from "./anchor.js";
 export type { AnchorDayOptions } from "./anchor.js";
 export { verifyAnchorForDate, recomputeRootAt } from "./verify.js";

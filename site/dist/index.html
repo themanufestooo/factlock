@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="FactLock is the trust layer agents check before they quote, book, or pay.">
+  <title>FactLock — Facts agents can act on</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="FactLock home">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <span>FactLock</span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#product">Product</a>
+      <a href="#trust">Trust model</a>
+      <a href="#faq">Ask FactLock</a>
+    </nav>
+    <a class="nav-cta" href="https://github.com/themanufestooo/veritas-attestation">View protocol <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="signal"></span> Independent verification for agentic commerce</p>
+        <h1>Facts agents<br>can act on.</h1>
+        <p class="lede">FactLock turns verified business facts into signed, time-bound records. Agents check them before they quote a price, book a service, or release a payment.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#faq">Ask a question</a>
+          <a class="text-link" href="#product">See how it works <span aria-hidden="true">↓</span></a>
+        </div>
+      </div>
+
+      <div class="receipt-shell" aria-label="Example FactLock verification record">
+        <div class="receipt-topline">
+          <span>FACTLOCK / LIVE RECORD</span>
+          <span class="verified-chip"><span></span> VERIFIED</span>
+        </div>
+        <div class="receipt-business">
+          <div>
+            <span class="receipt-label">SUBJECT</span>
+            <strong>Rápido Plumbing LLC</strong>
+          </div>
+          <span class="receipt-id">FLA_01M2…A8K2</span>
+        </div>
+        <dl class="claim-list">
+          <div><dt>Business identity</dt><dd>Matched</dd></div>
+          <div><dt>State license</dt><dd>Active</dd></div>
+          <div><dt>Service-call price</dt><dd>$89.00</dd></div>
+          <div><dt>Same-day availability</dt><dd>Confirmed</dd></div>
+        </dl>
+        <div class="receipt-proof">
+          <span>Signed by business + FactLock</span>
+          <span>Fresh for 29 days</span>
+        </div>
+        <div class="receipt-grid" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <div class="marquee" aria-label="FactLock verification properties">
+      <div>
+        <span>IDENTITY</span><i></i><span>LICENSE</span><i></i><span>HOURS</span><i></i><span>PRICE</span><i></i><span>AVAILABILITY</span><i></i><span>IDENTITY</span><i></i><span>LICENSE</span><i></i><span>HOURS</span><i></i><span>PRICE</span><i></i><span>AVAILABILITY</span>
+      </div>
+    </div>
+
+    <section class="problem-section" id="product">
+      <div class="section-number">01 / THE GAP</div>
+      <div class="problem-statement">
+        <h2>Agents can transact.<br>They still can’t tell what’s true.</h2>
+        <p>Websites, directories, and reviews describe a business. They do not prove that a license is active, a price is current, or a service is actually available now.</p>
+      </div>
+    </section>
+
+    <section class="steps-section">
+      <div class="section-heading">
+        <p class="eyebrow">A verification loop, not a reputation score</p>
+        <h2>Check the fact.<br>Show the proof.</h2>
+      </div>
+      <ol class="steps">
+        <li>
+          <span class="step-index">01</span>
+          <div><h3>Evidence arrives</h3><p>Documents, registry checks, field visits, and first-party approvals are bound to the business and exact claim.</p></div>
+        </li>
+        <li>
+          <span class="step-index">02</span>
+          <div><h3>FactLock signs</h3><p>A time-limited record is co-signed and added to a tamper-evident transparency log.</p></div>
+        </li>
+        <li>
+          <span class="step-index">03</span>
+          <div><h3>The agent checks</h3><p>One API or MCP call returns a clear verdict before the agent acts: verified, recheck, disputed, or unknown.</p></div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="trust-section" id="trust">
+      <div class="section-number light">02 / THE TRUST MODEL</div>
+      <div class="trust-intro">
+        <h2>Proof, with an<br>expiration date.</h2>
+        <p>FactLock does not promise that a business will perform well. It proves that a specific claim passed a defined check at a specific time—and stops agents from relying on it when that proof is no longer safe.</p>
+      </div>
+      <div class="verdict-table" role="list" aria-label="FactLock verdicts">
+        <div role="listitem"><span class="verdict-dot fresh"></span><strong>VERIFIED</strong><p>Checks passed. Record is current.</p></div>
+        <div role="listitem"><span class="verdict-dot aging"></span><strong>RECHECK</strong><p>Still usable, but nearing expiry.</p></div>
+        <div role="listitem"><span class="verdict-dot disputed"></span><strong>DISPUTED</strong><p>Do not rely on the claims.</p></div>
+        <div role="listitem"><span class="verdict-dot unknown"></span><strong>UNKNOWN</strong><p>No verified record. Do not infer.</p></div>
+      </div>
+    </section>
+
+    <section class="faq-section" id="faq">
+      <div class="faq-copy">
+        <p class="eyebrow">The unending FAQ</p>
+        <h2>Ask the question<br>that’s actually on your mind.</h2>
+        <p>The answer comes from FactLock’s product and trust model—not a generic support script. Ask another whenever you’re ready.</p>
+        <div class="question-prompts" aria-label="Suggested questions">
+          <button type="button">Is this a review site?</button>
+          <button type="button">Who verifies a claim?</button>
+          <button type="button">How does an agent use it?</button>
+        </div>
+      </div>
+
+      <div class="faq-console">
+        <div class="console-bar">
+          <span><i></i> FACTLOCK ANSWERS</span>
+          <span>NO LOGIN REQUIRED</span>
+        </div>
+        <div class="answer-stream" id="answer-stream" aria-live="polite" aria-label="Question and answer history">
+          <div class="answer welcome-answer">
+            <span class="answer-label">FACTLOCK</span>
+            <p>Ask me about verification, evidence, disputes, privacy, agent integrations, or the pilot.</p>
+          </div>
+        </div>
+        <form class="question-form" id="question-form">
+          <label class="sr-only" for="question-input">Ask FactLock a question</label>
+          <textarea id="question-input" rows="1" maxlength="240" placeholder="Ask anything about FactLock…" required></textarea>
+          <button type="submit" aria-label="Send question">Ask <span aria-hidden="true">↗</span></button>
+        </form>
+        <p class="console-note">FactLock won’t invent an answer it doesn’t know.</p>
+      </div>
+    </section>
+
+    <section class="closing-section">
+      <p class="eyebrow">For agents, marketplaces, and the businesses they rely on</p>
+      <h2>Before the action,<br>lock the fact.</h2>
+      <div class="closing-actions">
+        <a class="button button-light" href="#faq">Ask FactLock</a>
+        <a class="text-link light-link" href="https://github.com/themanufestooo/veritas-attestation">Read the open protocol <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true"><span></span></span><span>FactLock</span></a>
+    <p>Verifiable business facts for software that acts.</p>
+    <p>Protocol v1.1 · Built in public</p>
+  </footer>
+  <script src="./app.js" defer></script>
+</body>
+</html>

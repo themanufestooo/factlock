@@ -151,7 +151,7 @@ def verify_consistency(p: dict) -> bool:
 
 
 def main() -> None:
-    leaves = [f"veritas-merkle-leaf-{i:04d}".encode() for i in range(8)]
+    leaves = [f"factlock-merkle-leaf-{i:04d}".encode() for i in range(8)]
 
     # --- exhaustive self-check: fold == naive RFC root ---------------------
     for n in range(1, 25):
@@ -171,10 +171,10 @@ def main() -> None:
         "description": (
             "RFC 6962 Merkle tree vectors (SHA-256). leaf_hash=SHA256(0x00||leaf), "
             "node_hash=SHA256(0x01||left||right). Leaves are UTF-8 bytes of "
-            "'veritas-merkle-leaf-%04d'. Inclusion path entries are ordered leaf-up; "
+            "'factlock-merkle-leaf-%04d'. Inclusion path entries are ordered leaf-up; "
             "'left'=true means the sibling hash goes on the left when recombining."
         ),
-        "leaf_encoding": "utf8 of 'veritas-merkle-leaf-%04d'",
+        "leaf_encoding": "utf8 of 'factlock-merkle-leaf-%04d'",
         "leaves_hex": [l.hex() for l in leaves],
         "roots": [],
         "inclusion_proofs": [],

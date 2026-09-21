@@ -79,7 +79,7 @@ export type DepositState = "held" | "released" | "forfeited";
 
 export interface DepositEntry {
   id: string;
-  dispute_id: string; // opaque — ties to @veritas/ops dispute ids
+  dispute_id: string; // opaque — ties to @factlock/ops dispute ids
   customer_id: string;
   amount_cents: number;
   state: DepositState;

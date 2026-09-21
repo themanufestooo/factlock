@@ -11,7 +11,7 @@
  */
 import { readFileSync } from "node:fs";
 import { dueForReverification } from "../src/scheduler.js";
-import type { Attestation } from "@veritas/issuer";
+import type { Attestation } from "@factlock/issuer";
 
 function usage(): never {
   console.error("usage: scheduler-run.js --attestations <json|jsonl> [--now <rfc3339>]");

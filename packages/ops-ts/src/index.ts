@@ -1,4 +1,4 @@
-/** Veritas operations trust loop — TypeScript (T9–T12). */
+/** FactLock operations trust loop — TypeScript (T9–T12). */
 export { haversineMeters, withinVisitRadius, MAX_DISTANCE_M } from "./geo.js";
 export {
   InMemoryBusinessDirectory,

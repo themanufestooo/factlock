@@ -6,7 +6,7 @@
  * tamper-evident: rewriting history requires rewriting every later record.
  */
 import { createHash } from "node:crypto";
-import { canonicalize } from "@veritas/attestation-core";
+import { canonicalize } from "@factlock/attestation-core";
 import type { AnchorRecord } from "./types.js";
 
 export const GENESIS_HASH = "00".repeat(32);

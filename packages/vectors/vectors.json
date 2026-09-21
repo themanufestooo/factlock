@@ -168,7 +168,7 @@
     {
       "name": "attestation-shaped",
       "input": {
-        "attestation_id": "vat_test01",
+        "attestation_id": "fla_test01",
         "protocol_version": "1.1",
         "status": "ACTIVE",
         "claims": [
@@ -182,34 +182,34 @@
         ],
         "verified_at": "2026-09-19T12:00:05Z"
       },
-      "expected": "{\"attestation_id\":\"vat_test01\",\"claims\":[{\"amount\":8900,\"currency\":\"USD\",\"disclosed\":true,\"item\":\"service_call\",\"type\":\"price\"}],\"protocol_version\":\"1.1\",\"status\":\"ACTIVE\",\"verified_at\":\"2026-09-19T12:00:05Z\"}"
+      "expected": "{\"attestation_id\":\"fla_test01\",\"claims\":[{\"amount\":8900,\"currency\":\"USD\",\"disclosed\":true,\"item\":\"service_call\",\"type\":\"price\"}],\"protocol_version\":\"1.1\",\"status\":\"ACTIVE\",\"verified_at\":\"2026-09-19T12:00:05Z\"}"
     }
   ],
   "signatures": [
     {
       "name": "sig-0",
-      "seed_hex": "527e6bfe95338c4d327378eb9cba188cef17c7c41d21267830537be4929f39e4",
-      "public_key_hex": "0970eda93fac83c04413c4ca51fe0874ad0bc096b8135a2b431d73f8b15dbd10",
-      "message": "hello veritas",
-      "signature_hex": "797287e7a715fa252049a9cd9064547a38547d8d2815bef8db361a804e45a867a9b515ab3a9bfa3c998c38fbae2fb67ea58d9bbbb3dcc19f0884381badddd001"
+      "seed_hex": "8545b7f2cd969bf5e7686e878a8823aa8c029c80c7c786f90999721cc9f5c091",
+      "public_key_hex": "d9bd4be7d6fecc1b299e45341dc33267e84003ce8638621bcabdc8de335380d4",
+      "message": "hello factlock",
+      "signature_hex": "985c2b6565705112cacdaeec38db7d30e9d0ef12055ae7f8ae6fd63563873f4cb205b8903d2b2f6e09c4d156ac7f32b003907b65bca963c533327595f8650d06"
     },
     {
       "name": "sig-1",
-      "seed_hex": "527e6bfe95338c4d327378eb9cba188cef17c7c41d21267830537be4929f39e4",
-      "public_key_hex": "0970eda93fac83c04413c4ca51fe0874ad0bc096b8135a2b431d73f8b15dbd10",
+      "seed_hex": "8545b7f2cd969bf5e7686e878a8823aa8c029c80c7c786f90999721cc9f5c091",
+      "public_key_hex": "d9bd4be7d6fecc1b299e45341dc33267e84003ce8638621bcabdc8de335380d4",
       "message": "{\"a\":2,\"b\":1}",
-      "signature_hex": "87031c1fdf3737a6e952c0239226235054ba5d2b18c6c99ffc1ad44bcfdcdb001d405579d0afb378025de4425295531fdb400a6e42a1a3bb1af02f268b56d805"
+      "signature_hex": "46bbd14b0075aa3e72ea4703592e32eaad28a00c624da6d622f58f4c799da337f6edc5f495baf9ebf4a66759fdfba322bbabe5a8323534303b31a78326e59d06"
     },
     {
       "name": "sig-2",
-      "seed_hex": "527e6bfe95338c4d327378eb9cba188cef17c7c41d21267830537be4929f39e4",
-      "public_key_hex": "0970eda93fac83c04413c4ca51fe0874ad0bc096b8135a2b431d73f8b15dbd10",
+      "seed_hex": "8545b7f2cd969bf5e7686e878a8823aa8c029c80c7c786f90999721cc9f5c091",
+      "public_key_hex": "d9bd4be7d6fecc1b299e45341dc33267e84003ce8638621bcabdc8de335380d4",
       "message": "price attestation: $89.00 service call — cafés welcome 🍕",
-      "signature_hex": "be8ec32a831a17b5d8044e289defd83c771f7c131a2513e45c635d7d7a613a4edb959f63107b2659b5c3d93601bb9238b66cfd278d2be74c33964a38f968600c"
+      "signature_hex": "08ce21b81b6b005d37975f8ae2e2d2920e375c36b1befe62df933c3adb43f7d974fcecdee606602f344515f9102fe82c32feda10c3845c54d8f44a031916f006"
     }
   ],
   "negative": {
-    "wrong_key_public_hex": "63ac4e6701ef1b29248d8e92bf7bafc2c953187710695e881e56d9f352789862",
+    "wrong_key_public_hex": "a20e9269b18729fbf049fca4a79275a5f9b99e668b63e84a97758d3000148964",
     "note": "signatures must NOT verify under wrong_key_public_hex; flipping any message byte must fail verification"
   }
 }

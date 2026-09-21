@@ -14,14 +14,14 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
-import { verifyAttestation } from "@veritas/verify-api";
+import { verifyAttestation } from "@factlock/verify-api";
 import type {
   AttestationStore,
   StatusRegistry,
   VerifyDeps,
-} from "@veritas/verify-api";
-import type { KeyStore } from "@veritas/keystore";
-import type { LogReader } from "@veritas/verify-api";
+} from "@factlock/verify-api";
+import type { KeyStore } from "@factlock/keystore";
+import type { LogReader } from "@factlock/verify-api";
 import { badgeData, badgePage, badgeScript, notFoundPage, pickLang } from "./render.js";
 import type { Lang } from "./i18n.js";
 

@@ -1,6 +1,6 @@
-# @veritas/billing — subscriptions + metered API billing (T13/T14)
+# @factlock/billing — subscriptions + metered API billing (T13/T14)
 
-Money for Veritas: Stripe subscriptions, per-query metering for integrators,
+Money for FactLock: Stripe subscriptions, per-query metering for integrators,
 and the dispute-deposit ledger. **Code only** — no live Stripe keys, no real
 charges, no network in tests. Every Stripe call goes through
 `StripeClientLike`; webhook signature verification is pure HMAC via the
@@ -59,7 +59,7 @@ payloads are rejected with 400 before any state changes.
 ## Dispute deposits (spec §4.4)
 
 `POST /v1/deposits/hold {dispute_id, customer_id, amount_cents}` holds the
-refundable filing deposit (`dispute_id` is opaque — ties to `@veritas/ops`
+refundable filing deposit (`dispute_id` is opaque — ties to `@factlock/ops`
 dispute ids). `…/release` returns it when the dispute resolves in the
 filer's favor; `…/forfeit` burns it when ruled frivolous. Settlement is
 one-way: a settled deposit can never move again (422).

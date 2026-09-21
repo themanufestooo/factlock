@@ -11,11 +11,11 @@
  * Revocation appends a revocation record to the transparency log and marks
  * the CDN mirror entry.
  */
-import { canonicalizeBytes } from "@veritas/attestation-core";
-import { issueAttestation, type IssueRequest } from "@veritas/issuer";
-import type { KeyStore } from "@veritas/keystore";
-import { MerkleLog, verifyInclusionProof, toHex } from "@veritas/merkle-log";
-import type { AttestationStore, StatusRegistry } from "@veritas/verify-api";
+import { canonicalizeBytes } from "@factlock/attestation-core";
+import type { Attestation, IssueRequest } from "@factlock/issuer";
+import type { KeyStore } from "@factlock/keystore";
+import { MerkleLog, verifyInclusionProof, toHex } from "@factlock/merkle-log";
+import type { AttestationStore, StatusRegistry } from "@factlock/verify-api";
 import {
   OpsError,
   type CdnMirror,
@@ -43,6 +43,8 @@ export interface DisputeDeps {
   keystore: KeyStore;
   log: MerkleLog;
   cdn: CdnMirror;
+  /** Trusted issuance boundary; production must bind server-held authorization and evidence stores. */
+  issueCorrection: (request: IssueRequest) => Promise<Attestation>;
   clock?: () => Date;
 }
 
@@ -171,11 +173,7 @@ export async function resolveDispute(
       verification_method: "document_review",
       verifier_id: input.reviewer_id,
     };
-    const corrected = await issueAttestation(req, {
-      keystore: deps.keystore,
-      log: deps.log,
-      clock: deps.clock,
-    });
+    const corrected = await deps.issueCorrection(req as IssueRequest);
     await deps.attestations.put(corrected);
     corrected_attestation_id = corrected.attestation_id;
     await deps.statuses.set(dispute.attestation_id, {

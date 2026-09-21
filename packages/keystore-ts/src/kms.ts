@@ -46,7 +46,7 @@ export function spkiToRawEd25519(spki: Uint8Array): Uint8Array {
 }
 
 function defaultKeyId(records: KeyRecord[], owner: string, kind: KeyKind): string {
-  const prefix = kind === "veritas" ? "vkey_main" : `bkey_${owner}`;
+  const prefix = kind === "factlock" ? "vkey_main" : `bkey_${owner}`;
   let max = 0;
   for (const r of records) {
     if (r.owner === owner && r.kind === kind) {

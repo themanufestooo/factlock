@@ -1,10 +1,10 @@
-# @veritas/merkle-log
+# @factlock/merkle-log
 
-RFC 6962 Merkle transparency log for the Veritas attestation protocol (T4).
+RFC 6962 Merkle transparency log for the FactLock attestation protocol (T4).
 
 - `leaf_hash = SHA256(0x00 || leaf)`, `node_hash = SHA256(0x01 || left || right)`
 - Leaves are JCS-canonical attestation bytes (see `appendAttestation`, which
-  canonicalizes with the T1 reference library `@veritas/attestation-core`).
+  canonicalizes with the T1 reference library `@factlock/attestation-core`).
 - Append-only, in-memory tree with O(log n) inclusion proofs; optional JSONL
   journal for persistence and third-party audit.
 - Anchoring the root on-chain is T5 (out of scope here).
@@ -12,19 +12,19 @@ RFC 6962 Merkle transparency log for the Veritas attestation protocol (T4).
 ## Install
 
 ```sh
-npm install   # pulls @veritas/attestation-core via file:../core-ts
+npm install   # pulls @factlock/attestation-core via file:../core-ts
 npm run build
 ```
 
 ## Use
 
 ```ts
-import { MerkleLog, verifyInclusionProof, verifyConsistencyProof } from "@veritas/merkle-log";
+import { MerkleLog, verifyInclusionProof, verifyConsistencyProof } from "@factlock/merkle-log";
 
-const log = new MerkleLog("./data/veritas-main.jsonl"); // journal optional
+const log = new MerkleLog("./data/factlock-main.jsonl"); // journal optional
 
 const { index, root } = log.appendAttestation({
-  attestation_id: "vat_01K5EXAMPLE",
+  attestation_id: "fla_01K5EXAMPLE",
   claims: [{ type: "price", service: "service_call", amount_minor: 8900 }],
 });
 
@@ -59,7 +59,7 @@ split at `oldSize`; both roots recompute from the blocks via `foldBlocks`
 
 ## Notes
 
-- `@veritas/attestation-core` is consumed as `file:../core-ts` until published;
+- `@factlock/attestation-core` is consumed as `file:../core-ts` until published;
   reinstall `log-ts` after rebuilding `core-ts`.
 - The journal is append-only and crash-tolerant per line; `MerkleLog.load(path)`
   resumes appending, `MerkleLog.replay(path)` audits without attaching.

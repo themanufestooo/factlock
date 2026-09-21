@@ -1,11 +1,11 @@
-# @veritas/keystore
+# @factlock/keystore
 
-Key management for the Veritas attestation protocol (T2): `key_id` registry,
-signing backends, rotation protocol, and `/.well-known/veritas-keys.json`.
+Key management for the FactLock attestation protocol (T2): `key_id` registry,
+signing backends, rotation protocol, and `/.well-known/factlock-keys.json`.
 
 ## Trust model (read first)
 
-v1 is **custodial** and says so openly (spec §1.1, §3): Veritas generates and
+v1 is **custodial** and says so openly (spec §1.1, §3): FactLock generates and
 holds business keypairs in an HSM/KMS; the business authorizes each use via a
 verified channel (logged-in session + SMS confirmation), and every
 countersignature references an immutable authorization record that is
@@ -18,7 +18,7 @@ key-ownership migration, not a protocol rewrite.
 ## Backends
 
 ```ts
-import { SoftwareKeyStore, KmsKeyStore } from "@veritas/keystore";
+import { SoftwareKeyStore, KmsKeyStore } from "@factlock/keystore";
 
 // DEV/TEST ONLY — private keys live in process memory (+0600 file if dir given)
 const dev = new SoftwareKeyStore("./data/keys");
@@ -55,7 +55,7 @@ const store = new KmsKeyStore(
   "./data/keys",
 );
 
-await store.generateKey("veritas", "veritas", "vkey_main_01", "<kms-key-id-or-arn>");
+await store.generateKey("factlock", "factlock", "vkey_main_01", "<kms-key-id-or-arn>");
 ```
 
 For local dev secrets hygiene, prefer the OS keychain (`security` on macOS,
@@ -66,7 +66,7 @@ For local dev secrets hygiene, prefer the OS keychain (`security` on macOS,
 ## Rotation
 
 ```ts
-const old = await store.activeKey("veritas", "veritas");
+const old = await store.activeKey("factlock", "factlock");
 const next = await store.rotate(old.key_id, { gracePeriodDays: 30 });
 // old: status "grace", valid_until = now+30d  (still signs AND verifies)
 // next: status "active", valid_from = now
@@ -80,9 +80,9 @@ public key **by key_id**, so old signatures never break.
 ## Well-known keys
 
 ```ts
-import { buildWellKnown } from "@veritas/keystore";
+import { buildWellKnown } from "@factlock/keystore";
 const doc = buildWellKnown(await store.listRecords());
-// serve at /.well-known/veritas-keys.json (CDN-cached)
+// serve at /.well-known/factlock-keys.json (CDN-cached)
 ```
 
 Lists current **and** recently-retired keys with `valid_from`/`valid_until` and

@@ -5,7 +5,7 @@
  * those past 70% of their re-verification interval (the AGING threshold,
  * spec §8), most urgent first. The CLI script runs it on a cron schedule.
  */
-import type { Attestation } from "@veritas/issuer";
+import type { Attestation } from "@factlock/issuer";
 import type { DueAttestation } from "./types.js";
 
 const DUE_FRACTION = 0.7;

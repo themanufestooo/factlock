@@ -1,9 +1,9 @@
-# @veritas/ops — operations trust loop (T9–T12)
+# @factlock/ops — operations trust loop (T9–T12)
 
-The human side of Veritas: field visits, the review console, the dispute
+The human side of FactLock: field visits, the review console, the dispute
 lifecycle engine, and the re-verification scheduler. Consumes
-`@veritas/issuer`, `@veritas/verify-api`, `@veritas/keystore`,
-`@veritas/merkle-log`. HTTP is `node:http` only; stores are interfaces with
+`@factlock/issuer`, `@factlock/verify-api`, `@factlock/keystore`,
+`@factlock/merkle-log`. HTTP is `node:http` only; stores are interfaces with
 in-memory v1 implementations (Postgres later).
 
 ## T9 — verifier visits
@@ -56,7 +56,7 @@ ACTIVE → DISPUTED → CORRECTED | SUSPENDED | CLEARED
 - `POST /v1/disputes/:id/resolve` `{outcome, reviewer_id, notes?,
   corrected_request?}`:
   - `corrected` — requires `corrected_request` (a full issue request);
-    re-issues through `@veritas/issuer` with `subject.supersedes_id` set,
+    re-issues through `@factlock/issuer` with `subject.supersedes_id` set,
     stores the new attestation, marks the old one `CORRECTED`. Strike +1.
   - `suspended` — marks `SUSPENDED`. Strike +1.
   - `cleared` — marks `CLEARED`. No strike.
@@ -73,8 +73,8 @@ urgent first. Malformed intervals are skipped, never crash the run.
 
 ```bash
 # daily cron — prints the due queue as JSON
-0 6 * * * /usr/bin/node /opt/veritas/ops/dist/scripts/scheduler-run.js \
-  --attestations /var/lib/veritas/attestations.jsonl
+0 6 * * * /usr/bin/node /opt/factlock/ops/dist/scripts/scheduler-run.js \
+  --attestations /var/lib/factlock/attestations.jsonl
 node dist/scripts/scheduler-run.js --attestations ./att.jsonl --now 2026-10-15T12:00:00Z
 ```
 

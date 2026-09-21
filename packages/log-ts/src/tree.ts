@@ -9,7 +9,7 @@
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { HASH_LEN, fromHex, leafHash, nodeHash, toHex } from "./hash.js";
-import { canonicalizeBytes } from "@veritas/attestation-core";
+import { canonicalizeBytes } from "@factlock/attestation-core";
 
 export interface ProofStep {
   /** Sibling subtree hash, hex. */
@@ -150,7 +150,7 @@ export class MerkleLog {
 
   /**
    * Append an attestation-shaped object: JCS-canonicalized with the T1
-   * reference library (@veritas/attestation-core) before hashing.
+   * reference library (@factlock/attestation-core) before hashing.
    */
   appendAttestation(value: unknown): { index: number; root: string } {
     return this.append(canonicalizeBytes(value));

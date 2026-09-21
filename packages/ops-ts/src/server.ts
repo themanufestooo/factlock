@@ -23,9 +23,10 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
-import type { KeyStore } from "@veritas/keystore";
-import { MerkleLog } from "@veritas/merkle-log";
-import type { AttestationStore, StatusRegistry } from "@veritas/verify-api";
+import type { KeyStore } from "@factlock/keystore";
+import { MerkleLog } from "@factlock/merkle-log";
+import type { AttestationStore, StatusRegistry } from "@factlock/verify-api";
+import type { Attestation, IssueRequest } from "@factlock/issuer";
 import { OpsError } from "./types.js";
 import {
   type AuditLog,
@@ -50,6 +51,7 @@ export interface OpsServerOptions {
   keystore: KeyStore;
   log: MerkleLog;
   cdn: CdnMirror;
+  issueCorrection: (request: IssueRequest) => Promise<Attestation>;
   clock?: () => Date;
   maxBodyBytes?: number;
 }
@@ -99,6 +101,7 @@ export function createOpsServer(opts: OpsServerOptions): Server {
     keystore: opts.keystore,
     log: opts.log,
     cdn: opts.cdn,
+    issueCorrection: opts.issueCorrection,
     clock,
   };
 

@@ -70,7 +70,7 @@ test("resolve(dispute) escalates into the lifecycle engine", async () => {
 test("unknown attestation → 404; resolving twice → 422", async () => {
   const { deps } = await flagged();
   await assert.rejects(
-    () => openFlag({ attestation_id: "vat_nope", source: "public-report", reason: "x" }, deps),
+    () => openFlag({ attestation_id: "fla_nope", source: "public-report", reason: "x" }, deps),
     (e: unknown) => e instanceof OpsError && e.status === 404,
   );
   const s2 = await makeStack();

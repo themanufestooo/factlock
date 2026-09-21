@@ -7,8 +7,8 @@
  * - Undisclosed price amounts are NEVER rendered (spec §2) — the data payload
  *   carries counts, not amounts, for withheld items.
  */
-import type { Attestation } from "@veritas/issuer";
-import type { VerificationResult } from "@veritas/verify-api";
+import type { Attestation } from "@factlock/issuer";
+import type { VerificationResult } from "@factlock/verify-api";
 import { pickLang, t, type Lang } from "./i18n.js";
 
 export function esc(s: unknown): string {
@@ -106,6 +106,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;b
 .banner-review{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
 .banner-revoked{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
 .banner-suspended{background:#ffedd5;color:#9a3412;border:1px solid #fdba74}
+.banner-invalid{background:#fee2e2;color:#7f1d1d;border:1px solid #ef4444}
 h1{font-size:24px;margin:12px 0 4px}
 .fresh{color:#475569;font-size:14px;margin:0 0 16px}
 h2{font-size:16px;margin:20px 0 8px;color:#334155}
@@ -122,10 +123,12 @@ export function badgePage(input: BadgePageInput): string {
   const { attestation: att, result: r, lang, apiBaseUrl } = input;
   const name = businessName(att);
   const verifyUrl = `${apiBaseUrl}/v1/verify/${encodeURIComponent(att.attestation_id)}`;
-  const dot = dotColor(r.status);
+  const dot = r.valid ? dotColor(r.status) : "#dc2626";
 
   const banner =
-    r.status === "DISPUTED"
+    !r.valid
+      ? `<div class="banner banner-invalid">NOT VERIFIED — Treat these claims as untrusted. ${esc(r.message)}</div>`
+      : r.status === "DISPUTED"
       ? `<div class="banner banner-review">${esc(t(lang, "under_review_banner", { date: esc(r.verified_at.slice(0, 10)) }))}</div>`
       : r.status === "REVOKED"
         ? `<div class="banner banner-revoked">${esc(t(lang, "revoked_banner"))}</div>`
@@ -133,10 +136,10 @@ export function badgePage(input: BadgePageInput): string {
           ? `<div class="banner banner-suspended">${esc(t(lang, "suspended_banner"))}</div>`
           : "";
 
-  const prices = priceLines(att, lang);
+  const prices = r.valid ? priceLines(att, lang) : [];
   const open = prices.filter((p) => !p.withheld);
   const hidden = prices.filter((p) => p.withheld);
-  const other = (att.claims as Array<Record<string, unknown>>)
+  const other = (r.valid ? att.claims : [] as Array<Record<string, unknown>>)
     .filter((c) => c.type !== "price")
     .map(claimLabel);
 
@@ -168,10 +171,9 @@ export function badgePage(input: BadgePageInput): string {
 <h1>${esc(name)}</h1>
 <p class="fresh">${freshLine}</p>
 ${banner}
-<h2>${esc(t(lang, "claims_heading"))}</h2>
-<ul>${items.join("")}</ul>
+${r.valid ? `<h2>${esc(t(lang, "claims_heading"))}</h2><ul>${items.join("")}</ul>` : ""}
 <footer>
-<a href="${esc(verifyUrl)}">${esc(t(lang, "verified_by"))}</a> ·
+<a href="${esc(verifyUrl)}">${esc(r.valid ? t(lang, "verified_by") : "Not verified by FactLock")}</a> ·
 <a href="${esc(verifyUrl)}">${esc(t(lang, "view_full"))}</a>
 <p class="terms">${esc(t(lang, "point_in_time"))}</p>
 </footer>
@@ -198,6 +200,8 @@ export function badgeData(input: BadgePageInput): Record<string, unknown> {
     attestation_id: att.attestation_id,
     business_name: businessName(att),
     status: r.status,
+    valid: r.valid,
+    verdict_label: r.valid ? t(lang, "verified_by") : "Not verified by FactLock",
     freshness: r.freshness,
     freshness_word: t(lang, `freshness_${r.freshness}`),
     age_days: r.age_days,
@@ -206,7 +210,7 @@ export function badgeData(input: BadgePageInput): Record<string, unknown> {
     verified_by: t(lang, "verified_by"),
     view_full: t(lang, "view_full"),
     verify_url: `${apiBaseUrl}/v1/verify/${encodeURIComponent(att.attestation_id)}`,
-    dot: dotColor(r.status),
+    dot: r.valid ? dotColor(r.status) : "#dc2626",
     prices: {
       disclosed: open.map((p) => ({ item: p.item, label: p.label })),
       attested_count: prices.length,
@@ -220,8 +224,8 @@ export function badgeData(input: BadgePageInput): Record<string, unknown> {
  * no cookies (fetch with credentials:"omit"), CORS-friendly.
  *
  * Usage:
- *   <script src="https://badge.example.com/badge.js" data-veritas-badge
- *           data-attestation-id="vat_..." data-lang="es"></script>
+ *   <script src="https://badge.example.com/badge.js" data-factlock-badge
+ *           data-attestation-id="fla_..." data-lang="es"></script>
  */
 export function badgeScript(): string {
   return `(function(){
@@ -236,7 +240,7 @@ function baseOf(el){
 function html(d){
   return '<a href="'+esc(d.verify_url)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;font-family:system-ui,sans-serif;font-size:13px;color:#0f172a;text-decoration:none;border:1px solid #e2e8f0;border-radius:999px;padding:6px 12px;background:#fff;">'
     +'<span style="width:10px;height:10px;border-radius:50%;background:'+esc(d.dot)+';display:inline-block;"></span>'
-    +'<span><strong>'+esc(d.verified_by)+'</strong> &middot; '+esc(d.freshness_word)+'</span></a>';
+    +'<span><strong>'+esc(d.verdict_label||d.verified_by)+'</strong> &middot; '+esc(d.valid===false?d.status:d.freshness_word)+'</span></a>';
 }
 function mount(el){
   var id=el.getAttribute("data-attestation-id");
@@ -252,10 +256,10 @@ function mount(el){
   fetch(base+"/badge/data/"+encodeURIComponent(id)+"?lang="+encodeURIComponent(lang),{credentials:"omit"})
     .then(function(r){ if(!r.ok) throw new Error("bad status"); return r.json(); })
     .then(function(d){ target.innerHTML=html(d); })
-    .catch(function(){ /* leave unrendered rather than show a broken badge */ });
+    .catch(function(){ target.innerHTML='<span role="status" style="font-family:system-ui,sans-serif;font-size:13px;color:#991b1b">FactLock verification unavailable</span>'; });
 }
 function init(){
-  var els=document.querySelectorAll("[data-veritas-badge]");
+  var els=document.querySelectorAll("[data-factlock-badge]");
   for(var i=0;i<els.length;i++){ mount(els[i]); }
 }
 if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded",init); }

@@ -1,20 +1,20 @@
 /**
- * MCP server (T8) — exposes veritas_check over the Model Context Protocol.
+ * MCP server (T8) — exposes factlock_check over the Model Context Protocol.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   TOOL_NAME,
   TOOL_DESCRIPTION,
-  handleVeritasCheck,
-  type VeritasEnv,
+  handleFactLockCheck,
+  type FactLockEnv,
 } from "./tool.js";
 
 const InputSchema = {
   attestation_id: z
     .string()
     .optional()
-    .describe("Veritas attestation id (e.g. vat_01J...). Provide this OR business_id."),
+    .describe("FactLock attestation id (e.g. fla_01J...). Provide this OR business_id."),
   business_id: z
     .string()
     .optional()
@@ -25,20 +25,20 @@ const InputSchema = {
     .describe("Require the attestation to cover this claim type."),
 };
 
-export function createMcpServer(env: VeritasEnv): McpServer {
+export function createMcpServer(env: FactLockEnv): McpServer {
   const server = new McpServer(
-    { name: "veritas", version: "0.1.0" },
+    { name: "factlock", version: "0.1.0" },
     { capabilities: { tools: {} } },
   );
   server.registerTool(
     TOOL_NAME,
     {
-      title: "Veritas business-truth check",
+      title: "FactLock business-truth check",
       description: TOOL_DESCRIPTION,
       inputSchema: InputSchema,
     },
     async (args) => {
-      const result = await handleVeritasCheck(args, env);
+      const result = await handleFactLockCheck(args, env);
       return {
         content: [
           {

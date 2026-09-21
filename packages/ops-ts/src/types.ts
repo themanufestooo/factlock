@@ -1,7 +1,7 @@
 /**
  * Ops types (T9–T12): verifier visits, review flags, disputes, scheduler.
  */
-import type { LifecycleStatus } from "@veritas/verify-api";
+import type { LifecycleStatus } from "@factlock/verify-api";
 
 export class OpsError extends Error {
   readonly status: number;

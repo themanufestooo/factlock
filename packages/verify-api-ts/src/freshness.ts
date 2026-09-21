@@ -6,7 +6,7 @@
  * The verdict always carries the age. Computed from verified_at + interval —
  * never from client input.
  */
-import { CLAIM_INTERVAL_DAYS } from "@veritas/issuer";
+import { CLAIM_INTERVAL_DAYS } from "@factlock/issuer";
 import type { FreshnessVerdict } from "./types.js";
 
 const DAY_MS = 86_400_000;

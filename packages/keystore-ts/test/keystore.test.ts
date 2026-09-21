@@ -20,7 +20,7 @@ import {
   ERR_DUPLICATE_KEY_ID,
 } from "../src/index.js";
 import type { KmsClientLike } from "../src/index.js";
-import { verify, generateKeypair, sign as coreSign } from "@veritas/attestation-core";
+import { verify, generateKeypair, sign as coreSign } from "@factlock/attestation-core";
 
 const te = new TextEncoder();
 const tmp = () => mkdtempSync(join(tmpdir(), "ks-test-"));
@@ -111,10 +111,10 @@ test("software: duplicate explicit key_id throws", async () => {
 
 test("software: activeKey resolves the current key", async () => {
   const ks = new SoftwareKeyStore();
-  await ks.generateKey("veritas", "veritas");
-  const active = await ks.activeKey("veritas", "veritas");
+  await ks.generateKey("factlock", "factlock");
+  const active = await ks.activeKey("factlock", "factlock");
   assert.ok(active && active.status === "active");
-  assert.equal(await ks.activeKey("nobody", "veritas"), null);
+  assert.equal(await ks.activeKey("nobody", "factlock"), null);
 });
 
 // ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ test("software: activeKey resolves the current key", async () => {
 
 test("rotation: old-key attestations still verify after rotate", async () => {
   const ks = new SoftwareKeyStore();
-  const oldRec = await ks.generateKey("veritas", "veritas");
+  const oldRec = await ks.generateKey("factlock", "factlock");
   const msg = te.encode("attestation signed before rotation");
   const oldSig = await ks.sign(oldRec.key_id, msg);
 
@@ -147,7 +147,7 @@ test("rotation: old-key attestations still verify after rotate", async () => {
 
 test("rotation: well-known doc is correct through the rotation", async () => {
   const ks = new SoftwareKeyStore();
-  const oldRec = await ks.generateKey("veritas", "veritas");
+  const oldRec = await ks.generateKey("factlock", "factlock");
   const before = buildWellKnown(await ks.listRecords());
   assert.equal(before.keys.length, 1);
   assert.equal(before.keys[0].status, "active");
@@ -170,7 +170,7 @@ test("rotation: well-known doc is correct through the rotation", async () => {
 
 test("sunset: retired key cannot sign but still verifies; sunset is idempotent", async () => {
   const ks = new SoftwareKeyStore();
-  const oldRec = await ks.generateKey("veritas", "veritas");
+  const oldRec = await ks.generateKey("factlock", "factlock");
   const msg = te.encode("before sunset");
   const sig = await ks.sign(oldRec.key_id, msg);
   await ks.rotate(oldRec.key_id);
@@ -188,7 +188,7 @@ test("sunset: retired key cannot sign but still verifies; sunset is idempotent",
 
 test("rotate: retired key cannot be rotated", async () => {
   const ks = new SoftwareKeyStore();
-  const rec = await ks.generateKey("veritas", "veritas");
+  const rec = await ks.generateKey("factlock", "factlock");
   await ks.sunset(rec.key_id);
   await assert.rejects(ks.rotate(rec.key_id), (e: unknown) => {
     assert.ok(e instanceof KeystoreError && e.code === ERR_KEY_RETIRED);
@@ -241,7 +241,7 @@ test("kms: generateKey imports a KMS key; private material never crosses the wir
   const fake = new FakeKms();
   fake.createKey("arn:kms:key/aaa");
   const ks = new KmsKeyStore(fake);
-  const rec = await ks.generateKey("veritas", "veritas", "vkey_main_01", "arn:kms:key/aaa");
+  const rec = await ks.generateKey("factlock", "factlock", "vkey_main_01", "arn:kms:key/aaa");
   assert.equal(rec.public_key, Buffer.from(fake.keys.get("arn:kms:key/aaa")!.pub).toString("base64"));
 
   const sig = await ks.sign("vkey_main_01", te.encode("countersign me"));
@@ -270,7 +270,7 @@ function containsBytes(haystack: Uint8Array, needle: Uint8Array): boolean {
 
 test("kms: generateKey without a KMS key id throws (keys are created out of band)", async () => {
   const ks = new KmsKeyStore(new FakeKms());
-  await assert.rejects(ks.generateKey("veritas", "veritas"), /out of band/);
+  await assert.rejects(ks.generateKey("factlock", "factlock"), /out of band/);
 });
 
 test("kms: rotation imports the successor KMS key; old sigs still verify", async () => {
@@ -278,7 +278,7 @@ test("kms: rotation imports the successor KMS key; old sigs still verify", async
   fake.createKey("arn:kms:key/aaa");
   fake.createKey("arn:kms:key/bbb");
   const ks = new KmsKeyStore(fake);
-  await ks.generateKey("veritas", "veritas", "vkey_main_01", "arn:kms:key/aaa");
+  await ks.generateKey("factlock", "factlock", "vkey_main_01", "arn:kms:key/aaa");
   const oldSig = await ks.sign("vkey_main_01", te.encode("old attestation"));
   const newRec = await ks.rotate("vkey_main_01", { newKmsKeyId: "arn:kms:key/bbb" });
   assert.equal(newRec.key_id, "vkey_main_02");
@@ -291,7 +291,7 @@ test("kms: rotation imports the successor KMS key; old sigs still verify", async
 
 test("well-known: document shape matches the spec contract", async () => {
   const ks = new SoftwareKeyStore();
-  await ks.generateKey("veritas", "veritas");
+  await ks.generateKey("factlock", "factlock");
   await ks.generateKey("biz_rapido", "business");
   const doc = buildWellKnown(await ks.listRecords());
   assert.ok(doc.generated_at);

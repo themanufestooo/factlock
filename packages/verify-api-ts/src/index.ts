@@ -1,4 +1,4 @@
-/** Veritas public verification API — TypeScript (T6). */
+/** FactLock public verification API — TypeScript (T6). */
 export { verifyAttestation, redactClaims } from "./verifier.js";
 export { createVerifyServer } from "./server.js";
 export { TokenBucket } from "./ratelimit.js";

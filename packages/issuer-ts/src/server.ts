@@ -3,7 +3,7 @@
  *
  * Routes:
  *   POST /v1/businesses/{id}/attest   issuance (authenticated)
- *   GET  /.well-known/veritas-keys.json  key directory (public)
+ *   GET  /.well-known/factlock-keys.json  key directory (public)
  *   GET  /healthz                       liveness
  *
  * Authentication is a pluggable hook. The default STUB accepts a configured
@@ -11,7 +11,7 @@
  * the real identity provider (fail closed: no hook => 401 everything).
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { buildWellKnown } from "@veritas/keystore";
+import { buildWellKnown } from "@factlock/keystore";
 import { issueAttestation, type IssuerOptions } from "./issuer.js";
 import { IssueError } from "./types.js";
 
@@ -78,7 +78,7 @@ export function createIssuerServer(opts: ServerOptions): Server {
         return;
       }
 
-      if (req.method === "GET" && path === "/.well-known/veritas-keys.json") {
+      if (req.method === "GET" && path === "/.well-known/factlock-keys.json") {
         const doc = buildWellKnown(await opts.keystore.listRecords());
         res.writeHead(200, {
           "content-type": "application/json",
@@ -114,7 +114,7 @@ export function createIssuerServer(opts: ServerOptions): Server {
             { path: "/subject/business_id", message: `expected ${businessId}` },
           ]);
         }
-        const attestation = await issueAttestation(body, opts);
+        const attestation = await issueAttestation(body, opts, { principal: authed.principal });
         json(res, 201, attestation);
         return;
       }

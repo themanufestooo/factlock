@@ -24,7 +24,7 @@ import {
   fromHex,
 } from "../src/index.js";
 // See src/tree.ts note on this deep relative import.
-import { canonicalizeBytes } from "@veritas/attestation-core";
+import { canonicalizeBytes } from "@factlock/attestation-core";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const vectors = JSON.parse(
@@ -217,7 +217,7 @@ test("verifyInclusionProof rejects garbage", () => {
 });
 
 test("journal persistence: reload reproduces root and proofs", () => {
-  const dir = mkdtempSync(join(tmpdir(), "veritas-log-"));
+  const dir = mkdtempSync(join(tmpdir(), "factlock-log-"));
   try {
     const journal = join(dir, "log.jsonl");
     const log = new MerkleLog(journal);
@@ -242,7 +242,7 @@ test("journal persistence: reload reproduces root and proofs", () => {
 });
 
 test("audit script replays a journal and matches the published root", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "veritas-audit-"));
+  const dir = mkdtempSync(join(tmpdir(), "factlock-audit-"));
   try {
     const journal = join(dir, "log.jsonl");
     const log = new MerkleLog(journal);

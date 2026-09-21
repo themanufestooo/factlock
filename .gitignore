@@ -1,6 +1,9 @@
 node_modules/
 dist/
+!site/dist/
+!site/dist/**
 .venv/
+.audit-venv/
 __pycache__/
 *.tsbuildinfo
 .DS_Store

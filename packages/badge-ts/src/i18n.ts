@@ -9,7 +9,7 @@ type Dict = Record<string, string>;
 
 const EN: Dict = {
   page_title: "Business verification — {business}",
-  verified_by: "Verified by Veritas",
+  verified_by: "Verified by FactLock",
   view_full: "View full verification",
   claims_heading: "Verified claims",
   status_ACTIVE: "Active",
@@ -35,7 +35,7 @@ const EN: Dict = {
 
 const ES: Dict = {
   page_title: "Verificación de negocio — {business}",
-  verified_by: "Verificado por Veritas",
+  verified_by: "Verificado por FactLock",
   view_full: "Ver verificación completa",
   claims_heading: "Afirmaciones verificadas",
   status_ACTIVE: "Activa",

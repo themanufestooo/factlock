@@ -1,5 +1,5 @@
 /**
- * Ed25519 signing/verification for the Veritas attestation protocol.
+ * Ed25519 signing/verification for the FactLock attestation protocol.
  * Thin wrapper over tweetnacl. Deterministic: same key + bytes => same sig.
  */
 import nacl from "tweetnacl";

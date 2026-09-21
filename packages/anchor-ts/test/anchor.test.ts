@@ -9,7 +9,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { MerkleLog } from "@veritas/merkle-log";
+import { MerkleLog } from "@factlock/merkle-log";
 import { anchorDay } from "../src/anchor.js";
 import { verifyAnchorForDate, recomputeRootAt } from "../src/verify.js";
 import { verifyChain, GENESIS_HASH, computeRecordHash } from "../src/chain.js";
@@ -137,9 +137,9 @@ test("OpenTimestamps provider: disabled by default, never touches network", asyn
   const records = await anchors.records();
   assert.equal(records.length, 0);
   const body = {
-    version: "veritas-anchor/1" as const,
+    version: "factlock-anchor/1" as const,
     date: "2026-09-19",
-    tree: "veritas-main",
+    tree: "factlock-main",
     root: "ab".repeat(32),
     leaf_count: 1,
     prev_anchor_hash: GENESIS_HASH,

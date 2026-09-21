@@ -11,7 +11,7 @@
  *   4. valid_until = verified_at + the shortest re-verification interval
  *      across the attestation's claim types (spec §2 freshness table).
  *   5. Sign the canonical JSON (minus signatures/log) with the custodial
- *      business key, then countersign with the Veritas key (keystore T2).
+ *      business key, then countersign with the FactLock key (keystore T2).
  *   6. Append the canonical attestation (minus the log block) to the
  *      transparency log (T4); record leaf_index + root.
  *   7. Journal the authorization record immutably (it is also hash-committed
@@ -19,10 +19,11 @@
  */
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { canonicalize, canonicalizeBytes } from "@veritas/attestation-core";
-import type { KeyStore } from "@veritas/keystore";
-import { MerkleLog } from "@veritas/merkle-log";
-import { IssueError, type Attestation, type AuthRecord, type IssueRequest } from "./types.js";
+import { canonicalize, canonicalizeBytes } from "@factlock/attestation-core";
+import type { KeyStore } from "@factlock/keystore";
+import { MerkleLog } from "@factlock/merkle-log";
+import { IssueError, type Attestation, type IssueContext, type IssueRequest } from "./types.js";
+import { digestClaims, type AuthorizationStore, type EvidenceStore } from "./guards.js";
 import { validateUnsignedShape, validateAttestationShape, validateIssueRequest } from "./validate.js";
 import { newAttestationId } from "./ulid.js";
 
@@ -40,12 +41,16 @@ export interface IssuerOptions {
   log: MerkleLog;
   /** Server clock. Default: real time. Tests inject a fixed clock. */
   clock?: () => Date;
-  /** Transparency-log tree name. Default "veritas-main". */
+  /** Transparency-log tree name. Default "factlock-main". */
   treeName?: string;
-  /** Owner label of Veritas signing keys. Default "veritas". */
-  veritasOwner?: string;
+  /** Owner label of FactLock signing keys. Default "factlock". */
+  factlockOwner?: string;
   /** Where to journal authorization records (immutable JSONL). */
   authJournalPath?: string;
+  /** Server-side, single-use authorization registry. Required; omission fails closed. */
+  authorizations?: AuthorizationStore;
+  /** Server-side evidence registry. Required; omission fails closed. */
+  evidence?: EvidenceStore;
 }
 
 const b64e = (b: Uint8Array) => Buffer.from(b).toString("base64");
@@ -63,10 +68,11 @@ function validUntil(verifiedAt: Date, claims: Array<Record<string, unknown>>): s
 export async function issueAttestation(
   rawRequest: unknown,
   opts: IssuerOptions,
+  context?: IssueContext,
 ): Promise<Attestation> {
   const clock = opts.clock ?? (() => new Date());
-  const treeName = opts.treeName ?? "veritas-main";
-  const veritasOwner = opts.veritasOwner ?? "veritas";
+  const treeName = opts.treeName ?? "factlock-main";
+  const factlockOwner = opts.factlockOwner ?? "factlock";
 
   // 1. Request shape.
   const reqErrors = validateIssueRequest(rawRequest);
@@ -79,40 +85,33 @@ export async function issueAttestation(
   // subject.business_id as authoritative.
   const businessId = String((req.subject as Record<string, unknown>).business_id);
 
-  // 2. Authorization gate — 422, per spec §3.2 / ticket T3 AC.
-  const authRaw = req.authorization as Record<string, unknown> | undefined;
-  if (!authRaw || typeof authRaw !== "object") {
-    throw new IssueError(
-      422,
-      "authorization_required",
-      "countersignature requires an authorization record (auth_id, session_id, sms_confirmation_ref); none was provided",
-    );
-  }
-  const authFields: Array<{ path: string; message: string }> = [];
-  for (const f of ["auth_id", "session_id", "sms_confirmation_ref", "authorized_at", "authorized_by"] as const) {
-    const v = authRaw[f];
-    if (typeof v !== "string" || v.length === 0) {
-      authFields.push({ path: `/authorization/${f}`, message: "required non-empty string" });
-    }
-  }
-  if (authRaw.authorized_by !== "owner-on-file") {
-    authFields.push({ path: "/authorization/authorized_by", message: 'must be "owner-on-file"' });
-  }
-  if (authFields.length > 0) {
-    throw new IssueError(422, "authorization_invalid", "authorization record is malformed", authFields);
-  }
-  const auth = authRaw as unknown as AuthRecord;
   const now = clock();
-  const authorizedAt = new Date(auth.authorized_at);
-  if (Number.isNaN(authorizedAt.getTime())) {
-    throw new IssueError(422, "authorization_invalid", "authorization.authorized_at is not a valid timestamp", [
-      { path: "/authorization/authorized_at", message: "must be RFC 3339" },
-    ]);
+  if (!context?.principal) {
+    throw new IssueError(401, "principal_required", "an authenticated principal is required");
   }
-  if (authorizedAt.getTime() > now.getTime() + 5 * 60_000) {
-    throw new IssueError(422, "authorization_invalid", "authorization.authorized_at is in the future", [
-      { path: "/authorization/authorized_at", message: "must not be in the future" },
-    ]);
+  if (!opts.authorizations || !opts.evidence) {
+    throw new IssueError(503, "verification_unavailable", "authorization and evidence verification are not configured");
+  }
+  const auth = await opts.authorizations.consume({
+    authorizationId: req.authorization_id,
+    businessId,
+    principal: context.principal,
+    claimDigest: digestClaims(req.claims),
+    now,
+  });
+  if (!auth) {
+    throw new IssueError(422, "authorization_invalid", "authorization is missing, expired, replayed, or not bound to this principal, business, and claim set");
+  }
+  const evidenceOk = await opts.evidence.verify({
+    evidenceRefs: req.evidence_refs,
+    businessId,
+    claimTypes: req.claims.map((claim) => String(claim.type)),
+    verificationMethod: req.verification_method,
+    verifierId: req.verifier_id,
+    now,
+  });
+  if (!evidenceOk) {
+    throw new IssueError(422, "evidence_invalid", "evidence is missing, expired, unverified, or does not cover every claim");
   }
 
   // 3+4. Server-stamped time. device_time (if any) is preserved as metadata.
@@ -131,9 +130,9 @@ export async function issueAttestation(
   if (bizRec.status === "retired") {
     throw new IssueError(422, "business_key_invalid", `business key ${req.business_key_id} is retired`);
   }
-  const veritasKeyId = req.veritas_key_id ?? (await opts.keystore.activeKey(veritasOwner, "veritas"))?.key_id;
-  if (!veritasKeyId) {
-    throw new IssueError(503, "no_veritas_key", "no active Veritas signing key configured");
+  const factlockKeyId = req.factlock_key_id ?? (await opts.keystore.activeKey(factlockOwner, "factlock"))?.key_id;
+  if (!factlockKeyId) {
+    throw new IssueError(503, "no_factlock_key", "no active FactLock signing key configured");
   }
 
   const unsigned = {
@@ -161,13 +160,13 @@ export async function issueAttestation(
   const toSign = canonicalize(unsigned);
   const toSignBytes = new TextEncoder().encode(toSign);
   const businessSig = await opts.keystore.sign(req.business_key_id, toSignBytes);
-  const veritasSig = await opts.keystore.sign(veritasKeyId, toSignBytes);
+  const factlockSig = await opts.keystore.sign(factlockKeyId, toSignBytes);
 
   const withSigs = {
     ...unsigned,
     signatures: {
       business: { alg: "Ed25519", key_id: req.business_key_id, sig: b64e(businessSig) },
-      veritas: { alg: "Ed25519", key_id: veritasKeyId, sig: b64e(veritasSig) },
+      factlock: { alg: "Ed25519", key_id: factlockKeyId, sig: b64e(factlockSig) },
     },
   };
 

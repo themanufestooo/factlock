@@ -1,23 +1,23 @@
 /**
- * veritas_check tool handler (T8) — pure function over the T6 verifier.
+ * factlock_check tool handler (T8) — pure function over the T6 verifier.
  *
  * Resolves an attestation by id or by business, runs the full T6 verification
  * in-process (signatures, Merkle inclusion, lifecycle, freshness), and returns
  * a compact machine-readable verdict an agent can act on.
  */
-import { verifyAttestation } from "@veritas/verify-api";
+import { verifyAttestation } from "@factlock/verify-api";
 import type {
   AttestationStore,
   VerifyDeps,
-} from "@veritas/verify-api";
-import type { Attestation } from "@veritas/issuer";
+} from "@factlock/verify-api";
+import type { Attestation } from "@factlock/issuer";
 
 /** Latest-attestation lookup by business (pluggable; in-memory v1 below). */
 export interface BusinessIndex {
   latestForBusiness(businessId: string): Promise<Attestation | null>;
 }
 
-export interface VeritasEnv {
+export interface FactLockEnv {
   store: AttestationStore;
   index: BusinessIndex;
   deps: VerifyDeps;
@@ -25,14 +25,14 @@ export interface VeritasEnv {
   publicBaseUrl: string;
 }
 
-export interface VeritasCheckArgs {
+export interface FactLockCheckArgs {
   attestation_id?: string;
   business_id?: string;
   /** If set, the attestation must contain a claim of this type (price|hours|license|availability). */
   claim_type?: string;
 }
 
-export interface VeritasCheckResult {
+export interface FactLockCheckResult {
   valid: boolean;
   status: string;
   freshness: string;
@@ -47,7 +47,7 @@ export interface VeritasCheckResult {
   details_url: string | null;
 }
 
-export const TOOL_NAME = "veritas_check";
+export const TOOL_NAME = "factlock_check";
 
 /** subject.business_id is typed unknown in the Attestation schema — stringify it. */
 export function bizId(att: Attestation): string {
@@ -70,14 +70,15 @@ export const TOOL_DESCRIPTION = [
   "- AGING: 70-100% of the interval elapsed. Usable with caution.",
   "- STALE: past its re-verification interval. Do NOT trust until re-verified.",
   "",
-  "Status values: ACTIVE/CORRECTED/CLEARED are trusted; DISPUTED means under",
+  "Status values: ACTIVE/CLEARED are trusted; CORRECTED is superseded and must",
+  "be replaced; DISPUTED means under",
   "review (treat as untrusted); SUSPENDED and REVOKED must not be trusted.",
 ].join("\n");
 
 function fail(
   reason: string,
-  extra: Partial<VeritasCheckResult> = {},
-): VeritasCheckResult {
+  extra: Partial<FactLockCheckResult> = {},
+): FactLockCheckResult {
   return {
     valid: false,
     status: "UNKNOWN",
@@ -92,10 +93,10 @@ function fail(
   };
 }
 
-export async function handleVeritasCheck(
-  args: VeritasCheckArgs,
-  env: VeritasEnv,
-): Promise<VeritasCheckResult> {
+export async function handleFactLockCheck(
+  args: FactLockCheckArgs,
+  env: FactLockEnv,
+): Promise<FactLockCheckResult> {
   const { attestation_id, business_id, claim_type } = args;
   if (!attestation_id && !business_id) {
     return fail("Provide attestation_id or business_id.");
@@ -146,6 +147,8 @@ export async function handleVeritasCheck(
             ? "suspended"
             : r.status === "DISPUTED"
               ? "under_review"
+              : r.status === "CORRECTED"
+                ? "superseded"
               : r.expired
                 ? "expired"
                 : "untrusted"

@@ -1,4 +1,4 @@
-# Veritas Attestation Protocol — v1.1
+# FactLock Attestation Protocol — v1.1
 
 **Status:** Build-ready · **Date:** 2026-09-19 · **Entity:** EYFE Services LLC (interim)
 **Supersedes:** v1.0 draft. All eight red-team amendments (2026-09-19) folded in; see Changelog §12.
@@ -7,20 +7,20 @@
 
 ## 1. What an attestation is
 
-An attestation is a **signed, timestamped, publicly-auditable statement** by a business about its own claims (price, hours, availability, license), countersigned by Veritas after verification. An agent uses it to answer one question before transacting: *"is this claim true, right now, and who stands behind it?"*
+An attestation is a **signed, timestamped, publicly-auditable statement** by a business about its own claims (price, hours, availability, license), countersigned by FactLock after verification. An agent uses it to answer one question before transacting: *"is this claim true, right now, and who stands behind it?"*
 
 Design principles:
-1. **Verifiable by a stranger.** Any agent, on any platform, verifies without asking Veritas for permission.
+1. **Verifiable by a stranger.** Any agent, on any platform, verifies without asking FactLock for permission.
 2. **Freshness is honest.** Every attestation says exactly when it was verified. Stale data is labeled stale, never silently trusted.
 3. **Lying is expensive.** False attestation triggers disputes, flags, and suspension — enforced, not theoretical.
 4. **Cheap to check, cheap to issue.** Verification of an attestation must be free and instant. (This is why the hot path is not on-chain.)
 
 ### 1.1 Trust model (read this first)
 
-v1 uses **Veritas-custodied business keys** (see §3). We state this plainly because the alternative — implying the business holds keys it does not — would be theater:
+v1 uses **FactLock-custodied business keys** (see §3). We state this plainly because the alternative — implying the business holds keys it does not — would be theater:
 
-- **What v1 trust actually is:** trust in Veritas *operations* (key custody, verifier program, review discipline).
-- **What the real guarantee is:** **detectability, not prevention.** Every countersignature is appended to a public, append-only Merkle transparency log whose root is anchored on-chain daily (§4). Any forgery — by anyone, including a rogue Veritas insider — is permanently, publicly visible and provably attributable (or provably *un*attributable, via the authorization trail in §3.2, which is worse for the forger).
+- **What v1 trust actually is:** trust in FactLock *operations* (key custody, verifier program, review discipline).
+- **What the real guarantee is:** **detectability, not prevention.** Every countersignature is appended to a public, append-only Merkle transparency log whose root is anchored on-chain daily (§4). Any forgery — by anyone, including a rogue FactLock insider — is permanently, publicly visible and provably attributable (or provably *un*attributable, via the authorization trail in §3.2, which is worse for the forger).
 - **v2 (business self-custody, bring-your-own-key):** committed for **month 6** after launch, not "later." The authorization-trail schema in §3.2 is designed so v2 is a key-ownership migration, not a protocol rewrite.
 
 This framing ships on the landing page, not just in this spec. It is a stronger story than pretending at decentralization.
@@ -33,7 +33,7 @@ Canonical encoding: **JCS (RFC 8785)** before signing. All timestamps UTC (RFC 3
 
 ```json
 {
-  "attestation_id": "vat_01K5EXAMPLE",
+  "attestation_id": "fla_01K5EXAMPLE",
   "protocol_version": "1.1",
   "status": "ACTIVE",
   "subject": {
@@ -103,18 +103,17 @@ Canonical encoding: **JCS (RFC 8785)** before signing. All timestamps UTC (RFC 3
     "gps:26.1224,-80.1373"
   ],
   "authorization": {
-    "auth_id": "auth_9f31ab",
-    "session_id": "sess_71c0d2",
-    "sms_confirmation_ref": "sms_55e019",
+    "authorization_id": "auth_9f31ab",
+    "method": "authenticated_session",
     "authorized_at": "2026-09-19T11:59:58Z",
     "authorized_by": "owner-on-file"
   },
   "signatures": {
     "business": {"alg": "Ed25519", "key_id": "bkey_rapido_01", "sig": "BASE64..."},
-    "veritas":  {"alg": "Ed25519", "key_id": "vkey_main_01",  "sig": "BASE64..."}
+    "factlock":  {"alg": "Ed25519", "key_id": "vkey_main_01",  "sig": "BASE64..."}
   },
   "log": {
-    "tree": "veritas-main",
+    "tree": "factlock-main",
     "leaf_index": 48213,
     "root": "HEX..."
   }
@@ -137,32 +136,36 @@ v2 candidates: `insurance`, `reviews_aggregate`, `service_area` (geo-polygon).
 
 ### Selective price disclosure
 
-Price claims carry a `disclosed` flag. The business chooses per item which prices are publicly attested — competitive sensitivity is real, and more attestations happen when disclosure is voluntary. The badge shows e.g. "12 prices attested" regardless; undisclosed items are signed and logged (so the business can't later deny them) but their amounts are not served on public endpoints.
+Price claims carry a `disclosed` flag. Public API and badge responses redact undisclosed amounts. Protocol v1.1 still commits the full signed record to the transparency log, so it must not be used for genuinely confidential values. The proposed v1.2 commitment design is documented in `factlock-private-claims-proposal.md`.
 
 ---
 
 ## 3. Signing
 
-- **Algorithm:** Ed25519. Keys identified by `key_id`; public keys published at `/.well-known/veritas-keys.json`.
+- **Algorithm:** Ed25519. Keys identified by `key_id`; public keys published at `/.well-known/factlock-keys.json`.
 - **Two signatures required:**
-  1. **Business signature** — the business approves the exact claims. v1: Veritas generates and custodies the business keypair in an HSM; the business authorizes via a verified channel (logged-in approval + SMS confirmation). This is custodial and we say so openly (§1.1). v2 (month 6): business self-custody / bring-your-own-key.
-  2. **Veritas countersignature** — applied only after verifier evidence passes review. This is what makes it a *Veritas attestation* rather than a self-assertion.
+  1. **Business signature** — the business approves the exact claims. v1: FactLock generates and custodies the business keypair in an HSM; the business authorizes via a verified channel (logged-in approval + SMS confirmation). This is custodial and we say so openly (§1.1). v2 (month 6): business self-custody / bring-your-own-key.
+  2. **FactLock countersignature** — applied only after verifier evidence passes review. This is what makes it a *FactLock attestation* rather than a self-assertion.
 - **What is signed:** the canonical JSON of everything except the `signatures` and `log` blocks.
 
 ### 3.2 Business authorization trail (anti-forgery)
 
-Every countersignature MUST reference an authorization record; issuance without one is rejected (§8, `POST /v1/businesses/{id}/attest` returns 422). The record contains:
+Every countersignature MUST reference a server-held, one-time authorization record. The client supplies only an opaque `authorization_id`; it cannot author the record. The issuer atomically consumes it after checking that it is current and bound to the authenticated principal, business id, and exact digest of the claim set. The public record contains:
 
-- `auth_id`, `session_id` (owner's logged-in session), `sms_confirmation_ref` (SMS one-time confirmation; TCPA consent captured at onboarding — see §9)
+- `authorization_id`, `method` (`authenticated_session`, `signed_delegation`, or `operator_approval`)
 - `authorized_at` (server time), `authorized_by` (`owner-on-file`)
 
-Authorization records are stored immutably and hash-linked into the transparency log alongside the attestation. Consequence: a forged attestation with no matching authorization record is **provably rogue** — detectable by anyone replaying the log. This is the mechanism that makes custodial keys safe *enough* for v1: forgery doesn't require trusting us, it requires us to leave permanent public evidence of the forgery.
+Session identifiers, SMS references, and identity-provider details stay in the private authorization store. Authorization records are journaled and hash-linked into the transparency log through the attestation. Reuse, principal mismatch, business mismatch, claim-digest mismatch, and expiry all fail closed.
+
+### 3.3 Evidence gate
+
+Every issuance request references server-held evidence records. Before signing, the issuer verifies that each reference exists, belongs to the business, is current, matches the verification method and verifier when those bindings are present, and collectively covers every claim type. Missing verification infrastructure returns a service-unavailable error; the issuer never treats caller-supplied evidence text as proof.
 
 ---
 
 ## 4. Transparency log + anchoring (the "blockchain question," answered)
 
-- Every countersigned attestation is appended to the **`veritas-main` Merkle tree**. The log is public: anyone can fetch leaves and inclusion proofs.
+- Every countersigned attestation is appended to the **`factlock-main` Merkle tree**. The log is public: anyone can fetch leaves and inclusion proofs.
 - **Anchoring:** once every 24h (or every 10,000 leaves, whichever comes first), the Merkle root is published in a single on-chain transaction. The anchor record `{chain, tx_hash, block_height, root}` is published alongside the log.
 - **What this guarantees:** history cannot be rewritten without breaking the anchored roots. Verification of any attestation = signature checks + Merkle inclusion proof against a root that is itself anchored on-chain.
 - **Cost:** ~1 tx/day (a few dollars/month) instead of per-attestation fees. Verification stays free and instant.
@@ -180,12 +183,12 @@ Revocations are **log entries in the same anchored tree**, not just rows behind 
 
 ```
 1. GET /v1/businesses/{id}/attestation  → attestation object
-2. Reject if now > valid_until.
+2. Reject if now >= valid_until.
 3. Reject if status != ACTIVE (see §7 lifecycle: DISPUTED/SUSPENDED/REVOKED).
 4. Compute freshness per claim type against the §2 table (70%/100% rule).
    → return FRESH / AGING (with age in days) / STALE — never silently trust.
 5. Verify business signature against published business public key.
-6. Verify Veritas countersignature against published Veritas key.
+6. Verify FactLock countersignature against published FactLock key.
 7. Fetch inclusion proof; verify leaf against the published Merkle root.
 8. (Optional, high-value transactions) verify the root's on-chain anchor.
 9. Check the revocation list (log/CDN/API, in that fallback order) for attestation_id.
@@ -199,8 +202,8 @@ Total: milliseconds, zero cost, no API key required for verification. (Issuance 
 ## 6. Freshness, re-verification, revocation
 
 - **Re-verification cadence** per claim type (§2 table, exact day counts). Automated nudges to the business first ("confirm your prices are still current — one tap"), field re-check on a rotating sample.
-- **`verified_at` is server-stamped.** It is set at evidence acceptance by Veritas servers. The verifier device's clock is recorded as `device_time` metadata only — device clocks can be wrong or manipulated, and v1.0's ambiguity here was a skew attack waiting to happen.
-- **Revocation:** Veritas can revoke an attestation (key compromise, business closure, failed dispute → 3 strikes). Revocations are logged entries (§4.1). Agents check the revocation list as step 9.
+- **`verified_at` is server-stamped.** It is set at evidence acceptance by FactLock servers. The verifier device's clock is recorded as `device_time` metadata only — device clocks can be wrong or manipulated, and v1.0's ambiguity here was a skew attack waiting to happen.
+- **Revocation:** FactLock can revoke an attestation (key compromise, business closure, failed dispute → 3 strikes). Revocations are logged entries (§4.1). Agents check the revocation list as step 9.
 - **Voluntary update:** business changes a price → new attestation supersedes the old; the old remains in the log (history is append-only).
 
 ---
@@ -242,7 +245,7 @@ The system is only as honest as its field verifiers. v1 treats verifier fraud as
 > **Build gate: an attorney must sign off on the terms below before the first paid badge ships. No exceptions.**
 
 - An attestation is a **point-in-time statement of verified claims, not a guarantee of future performance.** The terms say this in plain language, in English and Spanish.
-- **Liability cap:** Veritas's liability for any attestation is capped at the subscription fees paid by the attesting business in the 12 months preceding the claim (or a fixed low cap set by counsel, whichever is lower).
+- **Liability cap:** FactLock's liability for any attestation is capped at the subscription fees paid by the attesting business in the 12 months preceding the claim (or a fixed low cap set by counsel, whichever is lower).
 - **Remedy for wrong attestations is dispute/suspension** (§7), not damages.
 - **TCPA consent:** the SMS confirmation used in the authorization trail (§3.2) requires express written consent captured at business onboarding, with the exact consent language counsel approves.
 - These terms are versioned, and the terms version is recorded on each attestation's authorization record.
@@ -271,7 +274,7 @@ POST /v1/disputes                         → file a dispute (refundable deposit
 POST /v1/businesses/{id}/attest           → issuance (authenticated, paid; 422 without authorization record)
 ```
 
-**Distribution is three-legged from day one** (never MCP-only): direct REST API + **MCP server** (`veritas_check(business_id, claim_types[])` → claims + freshness verdict + proof bundle) + **embeddable JS badge** for business websites. Rented land gets no single points of failure.
+**Distribution is three-legged from day one** (never MCP-only): direct REST API + **MCP server** (`factlock_check(business_id, claim_types[])` → claims + freshness verdict + proof bundle) + **embeddable JS badge** for business websites. Rented land gets no single points of failure.
 
 **Reference implementations:** signing/verification libraries ship in **TypeScript and Python** with shared cross-language test vectors (build ticket T1).
 

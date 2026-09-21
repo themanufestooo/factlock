@@ -1,4 +1,4 @@
-# @veritas/badge (T7)
+# @factlock/badge (T7)
 
 Hosted badge page + embeddable JS badge for business websites. English and
 Spanish from day one (the §9 legal gate requires plain language in both).
@@ -6,22 +6,22 @@ Spanish from day one (the §9 legal gate requires plain language in both).
 ## What a business embeds
 
 ```html
-<script src="https://badge.veritas.example/badge.js"
-        data-veritas-badge
-        data-attestation-id="vat_..."
+<script src="https://badge.factlock.example/badge.js"
+        data-factlock-badge
+        data-attestation-id="fla_..."
         data-lang="es"></script>
 ```
 
 The script (vanilla JS, **< 15KB**, no dependencies, no cookies — `fetch` with
 `credentials: "omit"`) fetches `/badge/data/:id` and renders a compact badge:
-status dot + "Verified by Veritas" + freshness word, linking to the full
+status dot + "Verified by FactLock" + freshness word, linking to the full
 verification API response. Works cross-origin via `Access-Control-Allow-Origin: *`.
 
 ## Routes
 
 - `GET /badge/:attestation_id` — hosted HTML page. `?lang=es` wins, then
   `Accept-Language`, else English. Shows business name, claim summary, status
-  chip, freshness, and a "Verified by Veritas" link to the verification API.
+  chip, freshness, and a "Verified by FactLock" link to the verification API.
 - `GET /badge/data/:id` — JSON payload for the embed script (CORS `*`).
 - `GET /badge.js` — the embeddable script.
 - `GET /healthz` — liveness.

@@ -1,4 +1,4 @@
-"""Veritas core protocol library (Python reference implementation)."""
+"""FactLock core protocol library (Python reference implementation)."""
 
 from .canonicalize import canonicalize, canonicalize_str
 from .ed25519 import (

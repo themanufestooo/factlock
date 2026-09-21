@@ -57,7 +57,7 @@ function withoutRequired(schema: Record<string, unknown>, drop: string[]): unkno
 const validateUnsignedFn = ajv.compile(withoutRequired(attestationSchema, ["signatures", "log"]));
 // Final: the issued attestation must satisfy the whole registered schema.
 const validateAttestationFn = ajv.getSchema(
-  "https://veritas.example/schemas/attestation-v1.json",
+  "https://factlock.example/schemas/attestation-v1.json",
 ) as AjvValidateFn;
 
 interface AjvError {

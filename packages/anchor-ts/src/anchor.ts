@@ -2,7 +2,7 @@
  * Daily anchoring (T5): take the Merkle log's current root, hash-chain it to
  * yesterday's anchor, and hand it to the provider.
  */
-import type { MerkleLog } from "@veritas/merkle-log";
+import type { MerkleLog } from "@factlock/merkle-log";
 import { computeRecordHash, GENESIS_HASH } from "./chain.js";
 import type {
   AnchorLog,
@@ -38,9 +38,9 @@ export async function anchorDay(opts: AnchorDayOptions): Promise<AnchorRecord> {
   }
 
   const body = {
-    version: "veritas-anchor/1" as const,
+    version: "factlock-anchor/1" as const,
     date,
-    tree: opts.tree ?? "veritas-main",
+    tree: opts.tree ?? "factlock-main",
     root: opts.log.getRoot(),
     leaf_count: opts.log.size,
     prev_anchor_hash: prev ? prev.record_hash : GENESIS_HASH,

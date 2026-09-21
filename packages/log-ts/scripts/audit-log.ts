@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Third-party audit tool for a Veritas transparency-log journal.
+ * Third-party audit tool for a FactLock transparency-log journal.
  *
  * Replays every leaf in the JSONL journal from scratch and recomputes the
  * Merkle root independently of the log operator's API. Anyone holding a copy

@@ -1,11 +1,15 @@
 /** Issuer types (T3). */
 
 export interface AuthRecord {
-  auth_id: string;
-  session_id: string;
-  sms_confirmation_ref: string;
+  authorization_id: string;
+  method: "authenticated_session" | "signed_delegation" | "operator_approval";
   authorized_at: string; // RFC 3339 UTC, server-stamped by the auth service
   authorized_by: "owner-on-file";
+}
+
+export interface IssueContext {
+  /** Authenticated principal supplied by the transport, never by the request body. */
+  principal: string;
 }
 
 export interface IssueRequest {
@@ -14,11 +18,11 @@ export interface IssueRequest {
   device_time?: string;
   verification_method: string;
   verifier_id: string;
-  evidence_refs?: string[];
-  /** Validated explicitly by the issuer (422 on any problem). */
-  authorization?: unknown;
+  evidence_refs: string[];
+  /** Opaque id resolved and consumed from FactLock's server-side authorization store. */
+  authorization_id: string;
   business_key_id: string;
-  veritas_key_id?: string;
+  factlock_key_id?: string;
   attestation_id?: string;
 }
 
@@ -43,7 +47,7 @@ export interface Attestation {
   authorization: AuthRecord;
   signatures: {
     business: AttestationSignature;
-    veritas: AttestationSignature;
+    factlock: AttestationSignature;
   };
   log: {
     tree: string;

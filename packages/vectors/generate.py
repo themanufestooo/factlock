@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "core-py" / "src"))
-from veritas_core import canonicalize_str, keypair_from_seed, sign  # noqa: E402
+from factlock_core import canonicalize_str, keypair_from_seed, sign  # noqa: E402
 
 CTRL = "\u0001"  # U+0001 control character
 
@@ -58,7 +58,7 @@ CANONICAL_CASES: list[tuple[str, object, str]] = [
     (
         "attestation-shaped",
         {
-            "attestation_id": "vat_test01",
+            "attestation_id": "fla_test01",
             "protocol_version": "1.1",
             "status": "ACTIVE",
             "claims": [
@@ -67,7 +67,7 @@ CANONICAL_CASES: list[tuple[str, object, str]] = [
             ],
             "verified_at": "2026-09-19T12:00:05Z",
         },
-        '{"attestation_id":"vat_test01","claims":[{"amount":8900,"currency":"USD",'
+        '{"attestation_id":"fla_test01","claims":[{"amount":8900,"currency":"USD",'
         '"disclosed":true,"item":"service_call","type":"price"}],'
         '"protocol_version":"1.1","status":"ACTIVE",'
         '"verified_at":"2026-09-19T12:00:05Z"}',
@@ -75,7 +75,7 @@ CANONICAL_CASES: list[tuple[str, object, str]] = [
 ]
 
 SIGN_MESSAGES = [
-    "hello veritas",
+    "hello factlock",
     '{"a":2,"b":1}',
     "price attestation: $89.00 service call — cafés welcome 🍕",
 ]
@@ -91,9 +91,9 @@ def main() -> None:
         assert got == expected, f"vector {name}: impl={got!r} expected={expected!r}"
         cases.append({"name": name, "input": value, "expected": expected})
 
-    seed_a = hashlib.sha256(b"veritas-test-seed-a").digest()
+    seed_a = hashlib.sha256(b"factlock-test-seed-a").digest()
     pub_a, priv_a = keypair_from_seed(seed_a)
-    seed_b = hashlib.sha256(b"veritas-test-seed-b").digest()
+    seed_b = hashlib.sha256(b"factlock-test-seed-b").digest()
     pub_b, _ = keypair_from_seed(seed_b)
 
     vectors = {

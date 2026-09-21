@@ -1,4 +1,4 @@
-/** Veritas key management — TypeScript (T2). */
+/** FactLock key management — TypeScript (T2). */
 export {
   KeystoreError,
   ERR_KEY_NOT_FOUND,

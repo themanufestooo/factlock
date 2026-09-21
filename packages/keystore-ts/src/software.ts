@@ -14,7 +14,7 @@ import {
   generateKeypair,
   sign as edSign,
   bytesToHex,
-} from "@veritas/attestation-core";
+} from "@factlock/attestation-core";
 import {
   ERR_DUPLICATE_KEY_ID,
   ERR_KEY_NOT_FOUND,
@@ -34,7 +34,7 @@ export function nowIso(): string {
 }
 
 function nextKeyId(records: KeyRecord[], owner: string, kind: KeyKind): string {
-  const prefix = kind === "veritas" ? "vkey_main" : `bkey_${owner}`;
+  const prefix = kind === "factlock" ? "vkey_main" : `bkey_${owner}`;
   let max = 0;
   for (const r of records) {
     if (r.owner === owner && r.kind === kind) {

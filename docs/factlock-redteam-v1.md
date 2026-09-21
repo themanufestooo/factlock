@@ -1,4 +1,4 @@
-# Veritas Protocol v1 — Red-Team Report
+# FactLock Protocol v1 — Red-Team Report
 
 **Date:** 2026-09-19 · **Role:** adversarial review · **Verdict:** shippable after 5 required amendments. No fatal flaws; 3 structural weaknesses that must be designed around, not patched later.
 
@@ -6,12 +6,12 @@
 
 ## FINDING 1 — CRITICAL: Custodial keys make the business signature theater
 
-**The attack:** In v1, Veritas generates and holds the business keypair. That means the "business signature" proves nothing — Veritas can sign any claim *as* the business. The dual-signature model collapses to single-party trust. If our HSM is compromised (or a rogue employee exists), every attestation is forgeable.
+**The attack:** In v1, FactLock generates and holds the business keypair. That means the "business signature" proves nothing — FactLock can sign any claim *as* the business. The dual-signature model collapses to single-party trust. If our HSM is compromised (or a rogue employee exists), every attestation is forgeable.
 
 **Why it matters:** The whole pitch is "signed by the actual business." A sophisticated buyer or journalist will spot this in one reading.
 
 **Recommended fix (spec amendment):**
-- Be radically honest: v1 trust = trust in Veritas *operations*, and the real guarantee is **detectability, not prevention**. The transparency log + daily anchoring means any forgery is permanently, publicly visible. Say this on the landing page. It is a stronger story than pretending at decentralization.
+- Be radically honest: v1 trust = trust in FactLock *operations*, and the real guarantee is **detectability, not prevention**. The transparency log + daily anchoring means any forgery is permanently, publicly visible. Say this on the landing page. It is a stronger story than pretending at decentralization.
 - Business authorization trail: every countersignature must reference an authorization record (login session + SMS confirmation + timestamp), stored immutably. A forged attestation without an authorization record is provably rogue.
 - v2 (self-custody) gets a committed date, not a vague "later": target month 6.
 
@@ -31,7 +31,7 @@
 
 ## FINDING 3 — CRITICAL: Disputes need a DISPUTED state
 
-**The attack:** A customer files a dispute against a false price attestation. The business has 48 hours to respond. During those 48 hours, the attestation is still live and agents keep booking on a lie. The dispute system protects Veritas's reputation *after* damage, not the customer *during* it.
+**The attack:** A customer files a dispute against a false price attestation. The business has 48 hours to respond. During those 48 hours, the attestation is still live and agents keep booking on a lie. The dispute system protects FactLock's reputation *after* damage, not the customer *during* it.
 
 **Recommended fix (spec amendment):** claim lifecycle becomes
 `ACTIVE → DISPUTED (visible flag, agents treat as AGING/untrusted) → CORRECTED | SUSPENDED | CLEARED`.
@@ -41,7 +41,7 @@ The verification page shows "under review since {date}" prominently. A dispute t
 
 ## FINDING 4 — HIGH: Liability must be capped before attestation #1
 
-**The attack:** "Veritas attested the price was $89 and I got charged $400." Without a liability cap, every wrong attestation is a potential lawsuit, and plaintiffs will name the deeper pocket (Veritas, not the plumber).
+**The attack:** "FactLock attested the price was $89 and I got charged $400." Without a liability cap, every wrong attestation is a potential lawsuit, and plaintiffs will name the deeper pocket (FactLock, not the plumber).
 
 **Recommended fix (spec amendment + legal):** Terms define attestation as a **point-in-time statement of verified claims, not a guarantee of future performance**. Liability capped at the subscription fee paid (or a fixed low cap). Dispute/suspension is the remedy, not damages. Attorney must sign off before the first paid badge ships. (Also: TCPA consent language for the SMS authorization flow.)
 

@@ -1,4 +1,4 @@
-/** Veritas Merkle transparency log — TypeScript (T4: RFC 6962). */
+/** FactLock Merkle transparency log — TypeScript (T4: RFC 6962). */
 export {
   MerkleLog,
   verifyInclusionProof,

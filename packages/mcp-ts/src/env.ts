@@ -1,7 +1,7 @@
 /**
  * Server environment loader (T8).
  *
- * Loads a running Veritas state from a data directory so the MCP server can
+ * Loads a running FactLock state from a data directory so the MCP server can
  * verify against the real keystore, transparency log, attestation store and
  * lifecycle registry. Layout:
  *
@@ -13,12 +13,12 @@
  */
 import { readFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { SoftwareKeyStore } from "@veritas/keystore";
-import { MerkleLog } from "@veritas/merkle-log";
-import { InMemoryStatusRegistry } from "@veritas/verify-api";
-import type { StatusOverride } from "@veritas/verify-api";
-import type { Attestation } from "@veritas/issuer";
-import type { VeritasEnv } from "./tool.js";
+import { SoftwareKeyStore } from "@factlock/keystore";
+import { MerkleLog } from "@factlock/merkle-log";
+import { InMemoryStatusRegistry } from "@factlock/verify-api";
+import type { StatusOverride } from "@factlock/verify-api";
+import type { Attestation } from "@factlock/issuer";
+import type { FactLockEnv } from "./tool.js";
 import { IndexedAttestationStore } from "./indexedStore.js";
 
 function readJsonl(path: string): Array<Record<string, unknown>> {
@@ -33,7 +33,7 @@ function readJsonl(path: string): Array<Record<string, unknown>> {
 export async function loadEnv(
   dataDir: string,
   opts: { publicBaseUrl?: string } = {},
-): Promise<VeritasEnv> {
+): Promise<FactLockEnv> {
   mkdirSync(dataDir, { recursive: true });
   const keystore = new SoftwareKeyStore(join(dataDir, "keystore"));
   const log = MerkleLog.load(join(dataDir, "log.jsonl"));
@@ -57,6 +57,6 @@ export async function loadEnv(
     store,
     index: store,
     deps: { keystore, log, statuses },
-    publicBaseUrl: opts.publicBaseUrl ?? "https://verify.veritas.example",
+    publicBaseUrl: opts.publicBaseUrl ?? "https://verify.factlock.example",
   };
 }

@@ -29,7 +29,7 @@ function encodeRand(rand: Uint8Array): string {
   return out;
 }
 
-/** `vat_01K5EXAMPLE…` — 26-char ULID, lexicographically sortable by time. */
+/** `fla_01K5EXAMPLE…` — 26-char ULID, lexicographically sortable by time. */
 export function newAttestationId(nowMs?: number): string {
-  return `vat_${encodeTime(nowMs ?? Date.now())}${encodeRand(randomBytes(10))}`;
+  return `fla_${encodeTime(nowMs ?? Date.now())}${encodeRand(randomBytes(10))}`;
 }

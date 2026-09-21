@@ -1,5 +1,5 @@
 /**
- * `/.well-known/veritas-keys.json` builder.
+ * `/.well-known/factlock-keys.json` builder.
  *
  * Agents resolving a signature's key_id fetch this document (CDN-cached) and
  * find the public key by key_id. Current keys carry `"status": "active"` with

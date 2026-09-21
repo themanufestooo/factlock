@@ -8,7 +8,7 @@
  */
 import { MerkleLog, verifyInclusionProof } from "../src/index.js";
 // See src/tree.ts note on this deep relative import.
-import { canonicalizeBytes } from "@veritas/attestation-core";
+import { canonicalizeBytes } from "@factlock/attestation-core";
 
 const N = 1_000_000;
 const SAMPLES = 2000;

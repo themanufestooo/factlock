@@ -3,19 +3,19 @@
  *
  *   1. Resolve the attestation from the store.
  *   2. Verify the business signature against the business public key (key_id).
- *   3. Verify the Veritas countersignature against the Veritas key (key_id).
+ *   3. Verify the FactLock countersignature against the FactLock key (key_id).
  *      Keys resolve by key_id, so retired keys still verify old attestations.
  *   4. Verify Merkle inclusion against the log's CURRENT root (not the proof's
  *      self-stated root — binding to the published root is the whole point).
  *   5. Resolve the effective lifecycle status (registry override wins).
- *   6. Reject when now > valid_until; compute freshness verdicts.
+ *   6. Reject when now >= valid_until; compute freshness verdicts.
  *
  * All time comes from the injected server clock. Nothing is trusted from the
  * attestation beyond what the signatures and the log prove.
  */
-import { canonicalizeBytes, verify } from "@veritas/attestation-core";
-import { toHex, verifyInclusionProof } from "@veritas/merkle-log";
-import type { Attestation } from "@veritas/issuer";
+import { canonicalizeBytes, verify } from "@factlock/attestation-core";
+import { toHex, verifyInclusionProof } from "@factlock/merkle-log";
+import type { Attestation } from "@factlock/issuer";
 import type {
   AttestationStore,
   LifecycleStatus,
@@ -60,6 +60,7 @@ function summarize(r: VerificationResult): string {
   if (r.status === "REVOKED") return `REVOKED — ${r.attestation_id} was permanently revoked. Do not trust.`;
   if (r.status === "DISPUTED") return `UNDER REVIEW — ${r.attestation_id} is disputed. Treat as untrusted until resolved.`;
   if (r.status === "SUSPENDED") return `SUSPENDED — ${r.attestation_id} is suspended. Do not trust.`;
+  if (r.status === "CORRECTED") return `SUPERSEDED — ${r.attestation_id} was replaced by a correction. Verify the replacement before trusting any claim.`;
   if (r.expired) return `EXPIRED — ${r.attestation_id} passed its re-verification date. Do not trust.`;
   if (r.freshness === "STALE") return `STALE — ${r.attestation_id} is past its re-verification interval (${r.age_days}d old). Re-verify before trusting.`;
   if (r.freshness === "AGING") return `AGING — ${r.attestation_id} is ${r.age_days}d old and nearing re-verification. Usable with caution.`;
@@ -83,9 +84,9 @@ export async function verifyAttestation(
   let signaturesOk = false;
   try {
     const bizPub = await deps.keystore.getPublicKey(att.signatures.business.key_id);
-    const verPub = await deps.keystore.getPublicKey(att.signatures.veritas.key_id);
+    const verPub = await deps.keystore.getPublicKey(att.signatures.factlock.key_id);
     const bizOk = verify(bizPub, signed, b64d(att.signatures.business.sig));
-    const verOk = verify(verPub, signed, b64d(att.signatures.veritas.sig));
+    const verOk = verify(verPub, signed, b64d(att.signatures.factlock.sig));
     signaturesOk = bizOk && verOk;
   } catch {
     signaturesOk = false; // unknown key_id, malformed sig, etc.
@@ -112,9 +113,10 @@ export async function verifyAttestation(
   const validUntilMs = new Date(att.valid_until).getTime();
   const f = attestationFreshness(verifiedAtMs, validUntilMs, nowMs);
 
-  const trustedStatus = status === "ACTIVE" || status === "CLEARED" || status === "CORRECTED";
+  const trustedStatus = status === "ACTIVE" || status === "CLEARED";
+  const expired = !Number.isFinite(validUntilMs) || nowMs >= validUntilMs;
   const valid =
-    signaturesOk && inclusionOk && trustedStatus && !f.expired;
+    signaturesOk && inclusionOk && trustedStatus && !expired && f.verdict !== "STALE";
 
   const result: VerificationResult = {
     attestation_id: id,
@@ -127,17 +129,17 @@ export async function verifyAttestation(
     valid_until: att.valid_until,
     signatures_ok: signaturesOk,
     inclusion_ok: inclusionOk,
-    expired: f.expired,
+    expired,
     key_ids: {
       business: att.signatures.business.key_id,
-      veritas: att.signatures.veritas.key_id,
+      factlock: att.signatures.factlock.key_id,
     },
-    claims: redactClaims(att.claims as Array<Record<string, unknown>>),
-    claims_freshness: claimFreshness(
+    claims: valid ? redactClaims(att.claims as Array<Record<string, unknown>>) : [],
+    claims_freshness: valid ? claimFreshness(
       att.claims as Array<Record<string, unknown>>,
       verifiedAtMs,
       nowMs,
-    ),
+    ) : [],
     message: "",
   };
   result.message = summarize(result);
