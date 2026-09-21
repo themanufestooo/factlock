@@ -105,16 +105,9 @@
     {
       "name": "float-big-int-like",
       "input": {
-        "f": 1e+16
+        "f": 5000000000000000.0
       },
-      "expected": "{\"f\":10000000000000000}"
-    },
-    {
-      "name": "float-exp",
-      "input": {
-        "f": 1e+21
-      },
-      "expected": "{\"f\":1e+21}"
+      "expected": "{\"f\":5000000000000000}"
     },
     {
       "name": "float-trailing-zero",
@@ -183,6 +176,22 @@
         "verified_at": "2026-09-19T12:00:05Z"
       },
       "expected": "{\"attestation_id\":\"fla_test01\",\"claims\":[{\"amount\":8900,\"currency\":\"USD\",\"disclosed\":true,\"item\":\"service_call\",\"type\":\"price\"}],\"protocol_version\":\"1.1\",\"status\":\"ACTIVE\",\"verified_at\":\"2026-09-19T12:00:05Z\"}"
+    }
+  ],
+  "rejects": [
+    {
+      "name": "float-exp",
+      "input": {
+        "f": 1e+21
+      },
+      "reason": "integral float outside the safe integer range"
+    },
+    {
+      "name": "unsafe-int",
+      "input": {
+        "n": 9007199254740993
+      },
+      "reason": "integer outside the safe integer range"
     }
   ],
   "signatures": [

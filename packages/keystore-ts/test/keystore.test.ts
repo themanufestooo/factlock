@@ -17,6 +17,8 @@ import {
   KeystoreError,
   ERR_KEY_NOT_FOUND,
   ERR_KEY_RETIRED,
+  ERR_KEY_NOT_YET_VALID,
+  ERR_KEY_EXPIRED,
   ERR_DUPLICATE_KEY_ID,
 } from "../src/index.js";
 import type { KmsClientLike } from "../src/index.js";
@@ -301,4 +303,93 @@ test("well-known: document shape matches the spec contract", async () => {
     assert.ok(k.key_id && k.owner && k.kind && k.public_key && k.valid_from);
     assert.ok(["active", "grace", "retired"].includes(k.status));
   }
+});
+
+// ---------------------------------------------------------------------------
+// P0 (H-07): validity windows are enforced inside sign()
+// ---------------------------------------------------------------------------
+
+function mutateRecords(ks: SoftwareKeyStore | KmsKeyStore, keyId: string, patch: Record<string, unknown>): void {
+  const internal = ks as unknown as { records: Array<Record<string, unknown>> };
+  const rec = internal.records.find((r) => r.key_id === keyId);
+  if (!rec) throw new Error(`no record ${keyId}`);
+  Object.assign(rec, patch);
+}
+
+test("software: sign rejects a not-yet-valid key", async () => {
+  const ks = new SoftwareKeyStore();
+  const rec = await ks.generateKey("biz_rapido", "business");
+  mutateRecords(ks, rec.key_id, { valid_from: new Date(Date.now() + 86_400_000).toISOString() });
+  await assert.rejects(ks.sign(rec.key_id, te.encode("x")), (e: unknown) => {
+    assert.ok(e instanceof KeystoreError && e.code === ERR_KEY_NOT_YET_VALID);
+    return true;
+  });
+});
+
+test("software: sign rejects an expired grace key (zero-day rotation)", async () => {
+  const ks = new SoftwareKeyStore();
+  const rec = await ks.generateKey("biz_rapido", "business");
+  await ks.rotate(rec.key_id, { gracePeriodDays: 0 });
+  // valid_until is now in the past (or exactly now): the grace key must not sign.
+  await assert.rejects(ks.sign(rec.key_id, te.encode("x")), (e: unknown) => {
+    assert.ok(e instanceof KeystoreError && e.code === ERR_KEY_EXPIRED);
+    return true;
+  });
+});
+
+test("software: rotation demotes every other active key for the owner+kind", async () => {
+  const ks = new SoftwareKeyStore();
+  const a = await ks.generateKey("biz_rapido", "business");
+  const b = await ks.generateKey("biz_rapido", "business");
+  assert.equal((await ks.getRecord(a.key_id))?.status, "active");
+  assert.equal((await ks.getRecord(b.key_id))?.status, "active");
+  const c = await ks.rotate(a.key_id, { gracePeriodDays: 30 });
+  // Successor _02 already existed (key b), so rotation bumped to _03.
+  assert.equal(c.key_id, "bkey_biz_rapido_03");
+  const statuses = new Map(
+    (await ks.listRecords()).filter((r) => r.owner === "biz_rapido").map((r) => [r.key_id, r.status]),
+  );
+  assert.equal(statuses.get(a.key_id), "grace");
+  assert.equal(statuses.get(b.key_id), "grace");
+  assert.equal(statuses.get(c.key_id), "active");
+});
+
+test("kms: sign rejects not-yet-valid and expired keys", async () => {
+  const fake = new FakeKms();
+  fake.createKey("arn:kms:key/aaa");
+  const ks = new KmsKeyStore(fake);
+  const rec = await ks.generateKey("factlock", "factlock", "vkey_win_01", "arn:kms:key/aaa");
+
+  mutateRecords(ks, "vkey_win_01", { valid_from: new Date(Date.now() + 86_400_000).toISOString() });
+  await assert.rejects(ks.sign("vkey_win_01", te.encode("x")), (e: unknown) => {
+    assert.ok(e instanceof KeystoreError && e.code === ERR_KEY_NOT_YET_VALID);
+    return true;
+  });
+
+  mutateRecords(ks, "vkey_win_01", {
+    valid_from: "2026-01-01T00:00:00Z",
+    valid_until: new Date(Date.now() - 1000).toISOString(),
+  });
+  await assert.rejects(ks.sign("vkey_win_01", te.encode("x")), (e: unknown) => {
+    assert.ok(e instanceof KeystoreError && e.code === ERR_KEY_EXPIRED);
+    return true;
+  });
+  // Nothing reached KMS for the rejected attempts.
+  assert.equal(fake.signCalls.length, 0);
+  void rec;
+});
+
+test("kms: rotate demotes every other active key for the owner+kind", async () => {
+  const fake = new FakeKms();
+  fake.createKey("arn:kms:key/aaa");
+  fake.createKey("arn:kms:key/bbb");
+  fake.createKey("arn:kms:key/ccc");
+  const ks = new KmsKeyStore(fake);
+  await ks.generateKey("factlock", "factlock", "vkey_dem_01", "arn:kms:key/aaa");
+  await ks.generateKey("factlock", "factlock", "vkey_dem_02", "arn:kms:key/bbb");
+  const next = await ks.rotate("vkey_dem_01", { newKeyId: "vkey_dem_03", newKmsKeyId: "arn:kms:key/ccc" });
+  const statuses = new Map((await ks.listRecords()).map((r) => [r.key_id, r.status]));
+  assert.equal(statuses.get("vkey_dem_01"), "grace");
+  assert.equal(statuses.get("vkey_dem_02"), "grace");
+  assert.equal(statuses.get(next.key_id), "active");
 });

@@ -2,8 +2,10 @@ node_modules/
 dist/
 !site/dist/
 !site/dist/**
+build/
 .venv/
 .audit-venv/
 __pycache__/
+*.egg-info/
 *.tsbuildinfo
 .DS_Store

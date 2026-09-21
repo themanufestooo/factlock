@@ -67,14 +67,22 @@ export class InMemoryFlagStore implements FlagStore {
 }
 
 export interface AuditLog {
-  append(e: AuditEntry): Promise<void>;
+  /**
+   * Append an entry. The log assigns entry_id and at (server-stamped);
+   * callers supply actor, action, and subject. Returns the stored entry.
+   */
+  append(e: Omit<AuditEntry, "entry_id" | "at">): Promise<AuditEntry>;
   list(): Promise<AuditEntry[]>;
 }
 
 export class InMemoryAuditLog implements AuditLog {
   private readonly entries: AuditEntry[] = [];
-  async append(e: AuditEntry): Promise<void> {
-    this.entries.push(structuredClone(e));
+  constructor(private readonly clock: () => Date = () => new Date()) {}
+  async append(e: Omit<AuditEntry, "entry_id" | "at">): Promise<AuditEntry> {
+    const at = this.clock().toISOString().replace(/\.\d{3}Z$/, "Z");
+    const entry: AuditEntry = { entry_id: `aud_${this.entries.length.toString(36)}`, at, ...e };
+    this.entries.push(structuredClone(entry));
+    return structuredClone(entry);
   }
   async list(): Promise<AuditEntry[]> {
     return this.entries.map((e) => ({ ...e }));

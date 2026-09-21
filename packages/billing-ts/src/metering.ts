@@ -7,8 +7,9 @@
  * `reconcile()` asserts the stored rollup matches the replay exactly.
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import type { ApiKey, MonthlyRollup, UsageRecord } from "./types.js";
+import type { ApiKey, MonthlyRollup, ProcessedEvent, UsageRecord } from "./types.js";
 import { BillingError } from "./types.js";
+import { verifySecretHash } from "./auth.js";
 
 export type Clock = () => Date;
 
@@ -20,21 +21,38 @@ export interface MeteringStore {
   usageForMonth(customer_id: string, month: string): Promise<UsageRecord[]>;
   saveRollup(rollup: MonthlyRollup): Promise<void>;
   getRollup(customer_id: string, month: string): Promise<MonthlyRollup | null>;
+  /** Idempotency ledger for usage ingestion (audit H-05). */
+  saveProcessedEvent(event: ProcessedEvent): Promise<void>;
+  getProcessedEvent(event_id: string): Promise<ProcessedEvent | null>;
+  /**
+   * Atomically persist the idempotency marker AND the usage record.
+   * Implementations MUST make both writes in one atomic unit (e.g. a DB
+   * transaction): a crash between the two writes would otherwise leave the
+   * marker without the ledger entry, silently dropping billable usage on
+   * retry. The in-memory store is atomic by single-threaded execution.
+   */
+  recordUsage(event: ProcessedEvent): Promise<void>;
 }
 
 export class InMemoryMeteringStore implements MeteringStore {
   private keys = new Map<string, ApiKey>();
   private usage: UsageRecord[] = [];
   private rollups = new Map<string, MonthlyRollup>();
+  private processedEvents = new Map<string, ProcessedEvent>();
 
   async saveKey(key: ApiKey) {
     this.keys.set(key.id, { ...key });
   }
   async getKey(id: string) {
-    return this.keys.get(id) ?? null;
+    // Copies on read: callers must not be able to mutate the stored record
+    // (e.g. clearing revoked_at) to bypass tenant/key checks.
+    const k = this.keys.get(id);
+    return k ? { ...k } : null;
   }
   async listKeys(customer_id: string) {
-    return [...this.keys.values()].filter((k) => k.customer_id === customer_id);
+    return [...this.keys.values()]
+      .filter((k) => k.customer_id === customer_id)
+      .map((k) => ({ ...k }));
   }
   async saveUsage(record: UsageRecord) {
     this.usage.push({ ...record });
@@ -48,7 +66,20 @@ export class InMemoryMeteringStore implements MeteringStore {
     this.rollups.set(`${rollup.customer_id}/${rollup.month}`, { ...rollup });
   }
   async getRollup(customer_id: string, month: string) {
-    return this.rollups.get(`${customer_id}/${month}`) ?? null;
+    const r = this.rollups.get(`${customer_id}/${month}`);
+    return r ? { ...r } : null;
+  }
+  async saveProcessedEvent(event: ProcessedEvent) {
+    this.processedEvents.set(event.event_id, structuredClone(event));
+  }
+  async getProcessedEvent(event_id: string) {
+    const e = this.processedEvents.get(event_id);
+    return e ? structuredClone(e) : null;
+  }
+  async recordUsage(event: ProcessedEvent) {
+    // Single-threaded: both writes land together, no crash window between.
+    this.processedEvents.set(event.event_id, structuredClone(event));
+    this.usage.push({ ...event.record });
   }
 }
 
@@ -84,29 +115,77 @@ export async function revokeApiKey(
   return next;
 }
 
+export interface IngestUsageInput {
+  key_id: string;
+  /** Raw API secret; verified against the stored hash (constant-time). */
+  secret: string;
+  endpoint: string;
+  units: number;
+  /** Caller-supplied idempotency key; replays return the first result. */
+  event_id: string;
+}
+
+export interface IngestUsageResult {
+  record: UsageRecord;
+  /** True when event_id was already processed — no new usage recorded. */
+  duplicate: boolean;
+}
+
+/**
+ * Ingest one metered usage event (audit H-05).
+ *
+ * Authentication: the raw API secret must be presented (HTTP layer passes
+ * it as `Authorization: Bearer <secret>`) and is verified against the
+ * stored hash in constant time. A key_id alone never authenticates.
+ *
+ * Idempotency: event_id is the dedupe key. The first ingest wins and the
+ * processed event is persisted; a replay returns the original record
+ * without recording duplicate usage.
+ */
 export async function ingestUsage(
   store: MeteringStore,
-  key_id: string,
-  endpoint: string,
-  units: number,
+  input: IngestUsageInput,
   clock: Clock = () => new Date(),
-): Promise<UsageRecord> {
+): Promise<IngestUsageResult> {
+  const { key_id, secret, endpoint, units, event_id } = input;
+  if (typeof event_id !== "string" || event_id === "" || event_id.length > 200) {
+    throw new BillingError("invalid_event_id", "event_id is required (max 200 chars)", 400);
+  }
   const key = await store.getKey(key_id);
   if (!key) throw new BillingError("key_not_found", "unknown API key", 404);
+  if (!secret || !verifySecretHash(secret, key.secret_hash)) {
+    throw new BillingError("invalid_api_secret", "API secret is invalid", 401);
+  }
   if (key.revoked_at) throw new BillingError("key_revoked", "API key is revoked", 403);
+
+  const existing = await store.getProcessedEvent(event_id);
+  if (existing) {
+    if (existing.record.key_id !== key_id) {
+      // The same event_id must not be recycled across keys — fail closed.
+      throw new BillingError("event_id_conflict", "event_id was already used for a different key", 409);
+    }
+    return { record: existing.record, duplicate: true };
+  }
+
   if (!Number.isInteger(units) || units <= 0) {
     throw new BillingError("invalid_units", "units must be a positive integer", 400);
   }
+  const now = clock().toISOString();
   const record: UsageRecord = {
     id: `u_${randomUUID().replace(/-/g, "").slice(0, 24)}`,
     key_id,
     customer_id: key.customer_id,
     endpoint,
     units,
-    at: clock().toISOString(),
+    at: now,
   };
-  await store.saveUsage(record);
-  return record;
+  // Atomic idempotency write: the marker and the ledger entry land together,
+  // so a crash can never leave a processed event_id without its usage
+  // record (lost billable usage) or a usage record without its marker
+  // (double-count on retry). A replay of the same event_id returns the
+  // original record without recording duplicate usage.
+  await store.recordUsage({ event_id, record, processed_at: now });
+  return { record, duplicate: false };
 }
 
 /** Roll up a month from the raw records and persist the result. */

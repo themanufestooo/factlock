@@ -52,6 +52,8 @@ export class KeystoreError extends Error {
 }
 export const ERR_KEY_NOT_FOUND = "KEY_NOT_FOUND";
 export const ERR_KEY_RETIRED = "KEY_RETIRED";
+export const ERR_KEY_NOT_YET_VALID = "KEY_NOT_YET_VALID";
+export const ERR_KEY_EXPIRED = "KEY_EXPIRED";
 export const ERR_DUPLICATE_KEY_ID = "DUPLICATE_KEY_ID";
 
 /**

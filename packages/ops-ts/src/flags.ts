@@ -85,8 +85,6 @@ export async function resolveFlag(
   await deps.flags.put(flag);
 
   await deps.audit.append({
-    entry_id: `aud_${now.getTime().toString(36)}_${flag.flag_id}`,
-    at: iso(now),
     actor: input.reviewer_id,
     action: `flag.${input.decision}`,
     subject: { flag_id: flag.flag_id, attestation_id: flag.attestation_id },

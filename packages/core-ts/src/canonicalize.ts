@@ -4,7 +4,14 @@
  * Produces the canonical JSON string that gets signed. Number formatting
  * relies on JSON.stringify, which implements ECMAScript Number::toString —
  * identical semantics to the Python reference implementation.
+ *
+ * I-JSON (RFC 7493): integers MUST be within the ECMAScript safe range
+ * ±(2^53 - 1). Anything outside it is rejected — the same logical value
+ * would canonicalize differently across implementations otherwise.
  */
+
+/** Largest integer with an exact double representation. */
+export const MAX_SAFE_INTEGER = 9007199254740991;
 
 function assertNoLoneSurrogates(s: string, what: string): void {
   for (let i = 0; i < s.length; i++) {
@@ -33,8 +40,16 @@ export function canonicalize(value: unknown): string {
     if (!Number.isFinite(n)) {
       throw new Error("JCS: non-finite numbers are not allowed");
     }
-    // JSON.stringify(-0) === "0"; integers beyond 2^53 lose precision —
-    // keep claim amounts within the safe integer range (spec: minor units).
+    // JSON.stringify(-0) === "0"; non-integer doubles keep ECMAScript
+    // formatting. Integers outside the safe range are rejected outright —
+    // JSON.parse("9007199254740993") is already 9007199254740992 by the time
+    // we see it, so the signed bytes would silently differ from the Python
+    // reference implementation.
+    if (Number.isInteger(n) && !Number.isSafeInteger(n)) {
+      throw new Error(
+        `JCS: integer outside the safe range ±${MAX_SAFE_INTEGER}`,
+      );
+    }
     return JSON.stringify(n);
   }
   if (t === "string") {

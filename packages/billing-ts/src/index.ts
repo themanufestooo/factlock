@@ -29,7 +29,15 @@ export {
   projectUnits,
   InMemoryMeteringStore,
 } from "./metering.js";
-export type { MeteringStore } from "./metering.js";
+export type { MeteringStore, IngestUsageInput, IngestUsageResult } from "./metering.js";
+export {
+  parseBillingTokens,
+  authenticateBilling,
+  requireBillingRole,
+  enforceTenant,
+  verifySecretHash,
+} from "./auth.js";
+export type { BillingAuthContext, BillingRole, BillingTokenRecord } from "./auth.js";
 export { previewInvoice } from "./invoice.js";
 export {
   handleWebhook,
@@ -50,6 +58,7 @@ export type {
   Feature,
   ApiKey,
   UsageRecord,
+  ProcessedEvent,
   MonthlyRollup,
   DepositEntry,
   DepositState,

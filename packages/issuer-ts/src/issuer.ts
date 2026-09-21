@@ -24,7 +24,7 @@ import type { KeyStore } from "@factlock/keystore";
 import { MerkleLog } from "@factlock/merkle-log";
 import { IssueError, type Attestation, type IssueContext, type IssueRequest } from "./types.js";
 import { digestClaims, type AuthorizationStore, type EvidenceStore } from "./guards.js";
-import { validateUnsignedShape, validateAttestationShape, validateIssueRequest } from "./validate.js";
+import { validateUnsignedShape, validateAttestationShape, validateIssueRequest, validateTimestamps } from "./validate.js";
 import { newAttestationId } from "./ulid.js";
 
 /** Re-verification intervals per claim type, days (spec §2). */
@@ -79,13 +79,22 @@ export async function issueAttestation(
   if (reqErrors.length > 0) {
     throw new IssueError(400, "schema_validation", "request failed schema validation", reqErrors);
   }
+  // 1b. Semantic timestamps (audit M-02): shape is checked above; here the
+  // values must resolve to real calendar dates, and evidence timestamps
+  // (e.g. checked_at) cannot be dated after the server's issuance time.
+  const now = clock();
+  const tsErrors = validateTimestamps(rawRequest, now.getTime());
+  if (tsErrors.length > 0) {
+    throw new IssueError(400, "invalid_timestamp", "timestamp fields must be real calendar dates and evidence must predate issuance", tsErrors);
+  }
+  if (tsErrors.length > 0) {
+    throw new IssueError(400, "invalid_timestamp", "timestamp fields must be real calendar dates", tsErrors);
+  }
   const req = rawRequest as IssueRequest;
 
   // Path/business consistency is enforced by the HTTP layer; the core takes
   // subject.business_id as authoritative.
   const businessId = String((req.subject as Record<string, unknown>).business_id);
-
-  const now = clock();
   if (!context?.principal) {
     throw new IssueError(401, "principal_required", "an authenticated principal is required");
   }
@@ -102,6 +111,11 @@ export async function issueAttestation(
   if (!auth) {
     throw new IssueError(422, "authorization_invalid", "authorization is missing, expired, replayed, or not bound to this principal, business, and claim set");
   }
+  // The authorization must predate issuance: an authorization stamped after
+  // verified_at cannot have authorized this attestation.
+  if (typeof auth.authorized_at === "string" && Date.parse(auth.authorized_at) > now.getTime()) {
+    throw new IssueError(422, "authorization_invalid", "authorization is dated after issuance");
+  }
   const evidenceOk = await opts.evidence.verify({
     evidenceRefs: req.evidence_refs,
     businessId,
@@ -116,7 +130,10 @@ export async function issueAttestation(
 
   // 3+4. Server-stamped time. device_time (if any) is preserved as metadata.
   const verifiedAt = now;
-  const attestationId = req.attestation_id ?? newAttestationId(verifiedAt.getTime());
+  // Attestation IDs are always server-generated (audit H-10): a
+  // client-supplied attestation_id is ignored, never honored, so callers
+  // cannot collide with or overwrite existing records.
+  const attestationId = newAttestationId(verifiedAt.getTime());
 
   // Resolve keys.
   const bizRec = await opts.keystore.getRecord(req.business_key_id);

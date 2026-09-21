@@ -163,6 +163,8 @@ export async function resolveDispute(
     if (!input.corrected_request || typeof input.corrected_request !== "object") {
       throw new OpsError(422, "corrected_request_required", "outcome=corrected requires corrected_request (re-issued through the issuer)");
     }
+    const original = await deps.attestations.get(dispute.attestation_id);
+    if (!original) throw new OpsError(404, "attestation_unknown", `no attestation ${dispute.attestation_id}`);
     const req = {
       ...input.corrected_request,
       subject: {
@@ -172,6 +174,7 @@ export async function resolveDispute(
       },
       verification_method: "document_review",
       verifier_id: input.reviewer_id,
+      business_key_id: original.signatures.business.key_id,
     };
     const corrected = await deps.issueCorrection(req as IssueRequest);
     await deps.attestations.put(corrected);

@@ -13,14 +13,24 @@ import {
   InMemorySubscriptionStore,
   RecordingStripeClient,
   createSubscription,
-  ingestUsage,
   type BillingServerOptions,
+  type BillingTokenRecord,
   type Customer,
 } from "../src/index.js";
 
 const SECRET = "whsec_test_server_abcdef1234567890";
 const CLOCK = () => new Date("2026-09-19T12:00:00.000Z");
 const stripe = new Stripe("sk_test_123");
+
+const CUSTOMER_TOKEN = "billing_test_customer_token_0123456789";
+const SERVICE_TOKEN = "billing_test_service_token_0123456789";
+
+function billingTokens(): Map<string, BillingTokenRecord> {
+  return new Map([
+    [CUSTOMER_TOKEN, { roles: ["customer"], customer_id: "cus_1" }],
+    [SERVICE_TOKEN, { roles: ["service"] }],
+  ]);
+}
 
 function customer(): Customer {
   return {
@@ -43,6 +53,7 @@ async function startServer() {
     stripeClient: new RecordingStripeClient(),
     stripe,
     webhookSecret: SECRET,
+    tokens: billingTokens(),
     clock: CLOCK,
   };
   const server = createBillingServer(opts);
@@ -67,10 +78,13 @@ async function post(base: string, path: string, body: unknown, headers: Record<s
   return { status: res.status, body: (await res.json()) as Record<string, unknown> };
 }
 
-async function get(base: string, path: string) {
-  const res = await fetch(`${base}${path}`);
+async function get(base: string, path: string, headers: Record<string, string> = {}) {
+  const res = await fetch(`${base}${path}`, { headers });
   return { status: res.status, body: (await res.json()) as Record<string, unknown> };
 }
+
+const customerAuth = { authorization: `Bearer ${CUSTOMER_TOKEN}` };
+const serviceAuth = { authorization: `Bearer ${SERVICE_TOKEN}` };
 
 test("GET /v1/plans lists the catalog", async () => {
   const s = await startServer();
@@ -109,7 +123,7 @@ test("webhook: tampered body → 400, no subscription created", async () => {
       "stripe-signature": sig,
     });
     assert.equal(status, 400);
-    const st = await get(s.base, "/v1/billing/status?customer_id=cus_1");
+    const st = await get(s.base, "/v1/billing/status?customer_id=cus_1", customerAuth);
     assert.equal((st.body.subscription as unknown), null);
   } finally {
     await s.stop();
@@ -137,7 +151,7 @@ test("webhook happy path → status shows active + entitled", async () => {
       "stripe-signature": sig,
     });
     assert.equal(status, 200);
-    const st = await get(s.base, "/v1/billing/status?customer_id=cus_1");
+    const st = await get(s.base, "/v1/billing/status?customer_id=cus_1", customerAuth);
     assert.equal(st.status, 200);
     assert.equal(st.body.badge, "active");
     assert.deepEqual(st.body.entitled, { badge: true, issuance: true, api: true, portal: true });
@@ -150,16 +164,22 @@ test("api keys → ingest → usage summary with projection", async () => {
   const s = await startServer();
   try {
     await createSubscription(s.opts.subscriptions, customer(), "standard", CLOCK);
-    const k = await post(s.base, "/v1/api-keys", { customer_id: "cus_1" });
+    const k = await post(s.base, "/v1/api-keys", {}, customerAuth);
     assert.equal(k.status, 201);
     const key_id = k.body.key_id as string;
-    assert.ok((k.body.secret as string).startsWith("factlock_sk_"));
+    const secret = k.body.secret as string;
+    assert.ok(secret.startsWith("factlock_sk_"));
 
     for (let i = 0; i < 60; i++) {
-      const r = await post(s.base, "/v1/usage/ingest", { key_id, endpoint: "verify", units: 1 });
-      assert.equal(r.status, 201);
+      const r = await post(
+        s.base,
+        "/v1/usage/ingest",
+        { key_id, endpoint: "verify", units: 1, event_id: `evt_${i}` },
+        { authorization: `Bearer ${secret}` },
+      );
+      assert.equal(r.status, 201, `ingest ${i}`);
     }
-    const sum = await get(s.base, "/v1/usage/summary?customer_id=cus_1");
+    const sum = await get(s.base, "/v1/usage/summary?customer_id=cus_1", customerAuth);
     assert.equal(sum.status, 200);
     assert.equal(sum.body.units_to_date, 60);
     assert.equal(sum.body.plan_id, "standard");
@@ -167,7 +187,7 @@ test("api keys → ingest → usage summary with projection", async () => {
     assert.equal(sum.body.projected_units, 95);
     assert.equal(sum.body.projected_total_cents, 7900);
 
-    const preview = await get(s.base, "/v1/billing/preview?customer_id=cus_1");
+    const preview = await get(s.base, "/v1/billing/preview?customer_id=cus_1", customerAuth);
     assert.equal(preview.body.total_cents, 7900);
     assert.equal(preview.body.charged, false);
   } finally {
@@ -175,20 +195,21 @@ test("api keys → ingest → usage summary with projection", async () => {
   }
 });
 
-test("deposits: hold → release over HTTP", async () => {
+test("deposits: hold → release over HTTP (service role)", async () => {
   const s = await startServer();
   try {
-    const h = await post(s.base, "/v1/deposits/hold", {
-      dispute_id: "dsp_1",
-      customer_id: "cus_1",
-      amount_cents: 2500,
-    });
+    const h = await post(
+      s.base,
+      "/v1/deposits/hold",
+      { dispute_id: "dsp_1", customer_id: "cus_1", amount_cents: 2500 },
+      serviceAuth,
+    );
     assert.equal(h.status, 201);
     assert.equal(h.body.state, "held");
-    const r = await post(s.base, `/v1/deposits/${h.body.id}/release`, {});
+    const r = await post(s.base, `/v1/deposits/${h.body.id}/release`, {}, serviceAuth);
     assert.equal(r.status, 200);
     assert.equal(r.body.state, "released");
-    const again = await post(s.base, `/v1/deposits/${h.body.id}/forfeit`, {});
+    const again = await post(s.base, `/v1/deposits/${h.body.id}/forfeit`, {}, serviceAuth);
     assert.equal(again.status, 422);
   } finally {
     await s.stop();
@@ -198,18 +219,20 @@ test("deposits: hold → release over HTTP", async () => {
 test("checkout + portal go through the Stripe client", async () => {
   const s = await startServer();
   try {
-    const co = await post(s.base, "/v1/billing/checkout", {
-      customer_id: "cus_1",
-      plan_id: "standard",
-      success_url: "https://example.com/ok",
-      cancel_url: "https://example.com/no",
-    });
+    const co = await post(
+      s.base,
+      "/v1/billing/checkout",
+      { plan_id: "standard", success_url: "https://example.com/ok", cancel_url: "https://example.com/no" },
+      customerAuth,
+    );
     assert.equal(co.status, 200);
     assert.ok((co.body.url as string).startsWith("https://"));
-    const po = await post(s.base, "/v1/billing/portal", {
-      customer_id: "cus_1",
-      return_url: "https://example.com/acct",
-    });
+    const po = await post(
+      s.base,
+      "/v1/billing/portal",
+      { return_url: "https://example.com/acct" },
+      customerAuth,
+    );
     assert.equal(po.status, 200);
     const stub = s.opts.stripeClient as RecordingStripeClient;
     assert.equal(stub.calls.length, 2);
@@ -218,12 +241,12 @@ test("checkout + portal go through the Stripe client", async () => {
   }
 });
 
-test("usage summary for unknown customer → zeroed", async () => {
+test("usage summary for another tenant → 403", async () => {
   const s = await startServer();
   try {
-    const sum = await get(s.base, "/v1/usage/summary?customer_id=cus_nobody");
-    assert.equal(sum.status, 200);
-    assert.equal(sum.body.units_to_date, 0);
+    const sum = await get(s.base, "/v1/usage/summary?customer_id=cus_nobody", customerAuth);
+    assert.equal(sum.status, 403);
+    assert.equal(sum.body.error, "forbidden");
   } finally {
     await s.stop();
   }

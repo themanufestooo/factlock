@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Install Python dependencies
+        run: pip install ./packages/core-py pytest
+
+      - name: Build all TypeScript packages (dependency order)
+        run: npm run build
+
+      - name: Run TypeScript tests
+        run: npm test
+
+      - name: Run Python tests
+        run: npm run test:py
+
+      - name: Dependency audit (fail on high/critical)
+        run: npm run audit

@@ -18,6 +18,14 @@ export class InMemoryAttestationStore implements AttestationStore {
   }
 
   async put(a: Attestation): Promise<void> {
+    // Uniqueness is enforced (audit H-10): attestation IDs are
+    // server-generated and immutable — a duplicate put is a caller bug,
+    // never a silent overwrite.
+    if (this.map.has(a.attestation_id)) {
+      const err = new Error(`duplicate attestation_id ${a.attestation_id}`);
+      (err as Error & { code?: string }).code = "DUPLICATE_ATTESTATION_ID";
+      throw err;
+    }
     this.map.set(a.attestation_id, structuredClone(a));
   }
 

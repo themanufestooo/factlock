@@ -82,6 +82,13 @@ export interface VerifyDeps {
   statuses?: StatusRegistry;
   /** Defaults to real time. Tests inject a fixed clock. */
   clock?: () => Date;
+  /**
+   * Owner label of FactLock countersigning keys. Defaults to "factlock".
+   * The countersigner's key record must carry BOTH kind "factlock" and this
+   * owner — a business key with kind "factlock" under a business owner is
+   * rejected (audit P0: key authorization).
+   */
+  factlockOwner?: string;
 }
 
 export interface VerifyServerOptions extends VerifyDeps {

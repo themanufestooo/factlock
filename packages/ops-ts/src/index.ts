@@ -27,6 +27,17 @@ export {
 } from "./disputes.js";
 export type { DisputeDeps, ResolveInput, ResolveResult } from "./disputes.js";
 export { dueForReverification, DUE_FRACTION } from "./scheduler.js";
+export { HashChainedAuditLog } from "./audit.js";
+export type { AuditedEntry } from "./audit.js";
+export {
+  parseOpsTokens,
+  authenticateOps,
+  requireRole,
+  requireAnyRole,
+  enforceBusinessScope,
+  mintTestToken,
+} from "./auth.js";
+export type { OpsAuthContext, OpsRole, OpsTokenRecord } from "./auth.js";
 export { createOpsServer } from "./server.js";
 export type { OpsServerOptions } from "./server.js";
 export { OpsError } from "./types.js";

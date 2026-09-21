@@ -1,5 +1,5 @@
 /** FactLock attestation protocol — TypeScript core (T1). */
-export { canonicalize, canonicalizeBytes } from "./canonicalize.js";
+export { canonicalize, canonicalizeBytes, MAX_SAFE_INTEGER } from "./canonicalize.js";
 export {
   generateKeypair,
   keypairFromSeed,

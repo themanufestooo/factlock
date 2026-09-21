@@ -35,6 +35,13 @@ async function makeHarness(now: Date = T0): Promise<Harness> {
   await keystore.generateKey("factlock", "factlock");
   const bizRec = await keystore.generateKey("biz_rapido", "business");
   const log = new MerkleLog();
+  // P0 (H-11): key records carry a real-time valid_from, but this harness
+  // freezes issuance in the past — backdate the windows so the keys are
+  // valid at the frozen verified_at.
+  for (const rec of (keystore as unknown as { records: Array<{ valid_from: string }> }).records) {
+    rec.valid_from = "2026-01-01T00:00:00Z";
+  }
+
   const request = {
       subject: { business_id: "biz_rapido", legal_name: "Rapido Plumbing LLC" },
       claims: [
@@ -94,12 +101,20 @@ test("undisclosed price amounts are redacted from the result", async () => {
   assert.equal(open.amount, 8900);
 });
 
+test("store rejects a duplicate attestation_id (IDs are immutable)", async () => {
+  const h = await makeHarness();
+  await assert.rejects(() => h.store.put(h.att), /duplicate attestation_id/);
+});
+
 test("tampered claim breaks the business signature", async () => {
   const h = await makeHarness();
   const evil = structuredClone(h.att);
   (evil.claims[0] as Record<string, unknown>).amount = 1;
-  await h.store.put(evil); // overwrites by id
-  const r = await verifyAttestation(h.att.attestation_id, h.store, deps(h));
+  // Attestation IDs are immutable (H-10): the tampered copy goes in a fresh
+  // store rather than overwriting the original record.
+  const evilStore = new InMemoryAttestationStore();
+  await evilStore.put(evil);
+  const r = await verifyAttestation(h.att.attestation_id, evilStore, deps(h));
   assert.ok(r);
   assert.equal(r.signatures_ok, false);
   assert.equal(r.valid, false);

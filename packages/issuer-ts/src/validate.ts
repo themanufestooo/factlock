@@ -79,6 +79,45 @@ export function validateIssueRequest(data: unknown): FieldError[] {
   return validateRequestFn(data) ? [] : toFieldErrors(validateRequestFn.errors);
 }
 
+/**
+ * Semantic timestamp check (audit M-02): the schema validates the date-time
+ * SHAPE, but a field that parses to NaN (or an overflowed date) must be
+ * rejected explicitly before it can flow into claim records. When the
+ * server's issuance time (verified_at) is supplied, ordering is enforced for
+ * evidence timestamps: a license cannot have been checked after issuance.
+ * device_time is deliberately NOT ordered — it is client-observed metadata
+ * and a skewed client clock must never move verified_at (explicit AC).
+ */
+export function validateTimestamps(data: unknown, nowMs?: number): FieldError[] {
+  const errors: FieldError[] = [];
+  const req = data as Record<string, unknown>;
+  if (typeof req?.device_time === "string" && !isRealDate(req.device_time)) {
+    errors.push({ path: "/device_time", message: "is not a real calendar date" });
+  }
+  const claims = req?.claims;
+  if (Array.isArray(claims)) {
+    claims.forEach((claim, i) => {
+      const checkedAt = (claim as Record<string, unknown>)?.checked_at;
+      if (typeof checkedAt === "string") {
+        if (!isRealDate(checkedAt)) {
+          errors.push({ path: `/claims/${i}/checked_at`, message: "is not a real calendar date" });
+        } else if (nowMs !== undefined && Date.parse(checkedAt) > nowMs) {
+          errors.push({ path: `/claims/${i}/checked_at`, message: "must not be after verified_at" });
+        }
+      }
+    });
+  }
+  return errors;
+}
+
+function isRealDate(value: string): boolean {
+  const ms = Date.parse(value);
+  if (!Number.isFinite(ms)) return false;
+  // Round-trip guard: reject overflowed dates like "2026-13-40".
+  const d = new Date(ms);
+  return !Number.isNaN(d.getTime());
+}
+
 /** Unsigned assembled shape (pre-signing): no signatures, no log block. */
 export function validateUnsignedShape(data: unknown): FieldError[] {
   return validateUnsignedFn(data) ? [] : toFieldErrors(validateUnsignedFn.errors);

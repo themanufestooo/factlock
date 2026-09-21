@@ -2,7 +2,7 @@
   "$defs": {
     "authorization": {
       "additionalProperties": false,
-      "description": "Business authorization trail (spec §3.2). Required for countersignature.",
+      "description": "Business authorization trail (spec \u00a73.2). Required for countersignature.",
       "properties": {
         "authorization_id": {
           "minLength": 1,
@@ -34,182 +34,194 @@
       "type": "object"
     },
     "claim": {
-      "allOf": [
+      "type": "object",
+      "oneOf": [
         {
-          "if": {
-            "properties": {
-              "type": {
-                "const": "license"
-              }
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "identity"
+            },
+            "legal_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "address": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "phone": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "website": {
+              "type": "string",
+              "maxLength": 200
             }
           },
-          "then": {
-            "properties": {
-              "authority": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "checked_at": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "license_number": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "status": {
-                "enum": [
-                  "active",
-                  "inactive",
-                  "expired",
-                  "suspended"
-                ]
-              }
-            },
-            "required": [
-              "authority",
-              "license_number",
-              "status",
-              "checked_at"
-            ]
-          }
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
         },
         {
-          "if": {
-            "properties": {
-              "type": {
-                "const": "hours"
-              }
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "license"
+            },
+            "authority": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "license_number": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "status": {
+              "enum": [
+                "active",
+                "inactive",
+                "expired",
+                "suspended"
+              ]
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
             }
           },
-          "then": {
-            "properties": {
-              "schedule": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "close": {
-                      "pattern": "^[0-2][0-9]:[0-5][0-9]$",
-                      "type": "string"
-                    },
-                    "day": {
-                      "enum": [
-                        "mon",
-                        "tue",
-                        "wed",
-                        "thu",
-                        "fri",
-                        "sat",
-                        "sun"
-                      ]
-                    },
-                    "open": {
-                      "pattern": "^[0-2][0-9]:[0-5][0-9]$",
-                      "type": "string"
-                    }
+          "required": [
+            "type",
+            "authority",
+            "license_number",
+            "status",
+            "checked_at"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "hours"
+            },
+            "timezone": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "schedule": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 7,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "day": {
+                    "enum": [
+                      "mon",
+                      "tue",
+                      "wed",
+                      "thu",
+                      "fri",
+                      "sat",
+                      "sun"
+                    ]
                   },
-                  "required": [
-                    "day",
-                    "open",
-                    "close"
-                  ],
-                  "type": "object"
+                  "open": {
+                    "type": "string",
+                    "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                  },
+                  "close": {
+                    "type": "string",
+                    "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                  }
                 },
-                "minItems": 1,
-                "type": "array"
-              },
-              "timezone": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "timezone",
-              "schedule"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "type": {
-                "const": "price"
+                "required": [
+                  "day",
+                  "open",
+                  "close"
+                ],
+                "additionalProperties": false
               }
             }
           },
-          "then": {
-            "properties": {
-              "amount": {
-                "description": "integer minor units",
-                "minimum": 0,
-                "type": "integer"
-              },
-              "currency": {
-                "pattern": "^[A-Z]{3}$",
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              },
-              "disclosed": {
-                "type": "boolean"
-              },
-              "item": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "unit": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "item",
-              "amount",
-              "currency",
-              "disclosed"
-            ]
-          }
+          "required": [
+            "type",
+            "timezone",
+            "schedule"
+          ],
+          "additionalProperties": false
         },
         {
-          "if": {
-            "properties": {
-              "type": {
-                "const": "availability"
-              }
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "price"
+            },
+            "item": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "amount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "integer minor units"
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "disclosed": {
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "unit": {
+              "type": "string",
+              "maxLength": 60
             }
           },
-          "then": {
-            "properties": {
-              "available": {
-                "type": "boolean"
-              },
-              "service": {
-                "minLength": 1,
-                "type": "string"
-              }
+          "required": [
+            "type",
+            "item",
+            "amount",
+            "currency",
+            "disclosed"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "availability"
             },
-            "required": [
-              "service",
-              "available"
-            ]
-          }
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "available": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "service",
+            "available"
+          ],
+          "additionalProperties": false
         }
-      ],
-      "properties": {
-        "type": {
-          "enum": [
-            "identity",
-            "license",
-            "hours",
-            "price",
-            "availability"
-          ]
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "type": "object"
+      ]
     },
     "signature": {
       "additionalProperties": false,
@@ -219,11 +231,13 @@
         },
         "key_id": {
           "minLength": 1,
-          "type": "string"
+          "type": "string",
+          "maxLength": 200
         },
         "sig": {
           "minLength": 1,
-          "type": "string"
+          "type": "string",
+          "maxLength": 500
         }
       },
       "required": [
@@ -240,16 +254,20 @@
           "additionalProperties": false,
           "properties": {
             "city": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 100
             },
             "postal": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 20
             },
             "state": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 100
             },
             "street": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 200
             }
           },
           "required": [
@@ -262,20 +280,25 @@
         },
         "business_id": {
           "minLength": 1,
-          "type": "string"
+          "type": "string",
+          "maxLength": 200
         },
         "dba": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 200
         },
         "legal_name": {
           "minLength": 1,
-          "type": "string"
+          "type": "string",
+          "maxLength": 200
         },
         "phone": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 40
         },
         "website": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 200
         }
       },
       "required": [
@@ -291,7 +314,8 @@
   "properties": {
     "attestation_id": {
       "pattern": "^fla_[A-Za-z0-9]+$",
-      "type": "string"
+      "type": "string",
+      "maxLength": 200
     },
     "authorization": {
       "$ref": "#/$defs/authorization"
@@ -301,25 +325,30 @@
         "$ref": "#/$defs/claim"
       },
       "minItems": 1,
-      "type": "array"
+      "type": "array",
+      "maxItems": 64
     },
     "device_time": {
       "format": "date-time",
-      "type": "string"
+      "type": "string",
+      "maxLength": 60
     },
     "evidence_refs": {
       "items": {
         "minLength": 1,
-        "type": "string"
+        "type": "string",
+        "maxLength": 500
       },
-      "type": "array"
+      "type": "array",
+      "maxItems": 32
     },
     "log": {
       "additionalProperties": false,
       "properties": {
         "leaf_index": {
           "minimum": 0,
-          "type": "integer"
+          "type": "integer",
+          "maximum": 9007199254740991
         },
         "root": {
           "pattern": "^[0-9a-f]{64}$",
@@ -387,7 +416,8 @@
     },
     "verifier_id": {
       "minLength": 1,
-      "type": "string"
+      "type": "string",
+      "maxLength": 200
     }
   },
   "required": [
@@ -403,6 +433,6 @@
     "authorization",
     "signatures"
   ],
-  "title": "FactLock attestation object v1.1 (spec §2)",
+  "title": "FactLock attestation object v1.1 (spec \u00a72)",
   "type": "object"
 }

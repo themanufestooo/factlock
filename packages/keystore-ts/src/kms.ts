@@ -13,7 +13,9 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import {
   ERR_DUPLICATE_KEY_ID,
+  ERR_KEY_EXPIRED,
   ERR_KEY_NOT_FOUND,
+  ERR_KEY_NOT_YET_VALID,
   ERR_KEY_RETIRED,
   KeyRecord,
   KeyKind,
@@ -162,6 +164,16 @@ export class KmsKeyStore implements KeyStore {
     if (rec.status === "retired") {
       throw new KeystoreError(ERR_KEY_RETIRED, `key ${keyId} is retired and cannot sign`);
     }
+    // Same validity-window enforcement as the software keystore (audit
+    // H-07): the local registry is authoritative for windows even though
+    // signing happens remotely.
+    const nowMs = Date.now();
+    if (new Date(rec.valid_from).getTime() > nowMs) {
+      throw new KeystoreError(ERR_KEY_NOT_YET_VALID, `key ${keyId} is not yet valid`);
+    }
+    if (rec.valid_until && new Date(rec.valid_until).getTime() <= nowMs) {
+      throw new KeystoreError(ERR_KEY_EXPIRED, `key ${keyId} is past its validity window`);
+    }
     // The ONLY thing that crosses the wire: key id + message. No private bytes.
     const { Signature } = await this.kms.sign({
       KeyId: this.kmsIdFor(keyId),
@@ -212,9 +224,17 @@ export class KmsKeyStore implements KeyStore {
       );
     }
     const graceDays = opts.gracePeriodDays ?? 30;
-    const newId = opts.newKeyId ?? successorKeyId(keyId);
-    if (this.records.some((r) => r.key_id === newId)) {
-      throw new KeystoreError(ERR_DUPLICATE_KEY_ID, `key_id ${newId} already exists`);
+    let newId = opts.newKeyId ?? successorKeyId(keyId);
+    if (opts.newKeyId) {
+      // Explicit caller choice: a collision is a hard error.
+      if (this.records.some((r) => r.key_id === newId)) {
+        throw new KeystoreError(ERR_DUPLICATE_KEY_ID, `key_id ${newId} already exists`);
+      }
+    } else {
+      // Auto-derived: bump until unused (keys may have been generated independently).
+      while (this.records.some((r) => r.key_id === newId)) {
+        newId = successorKeyId(newId);
+      }
     }
     const { PublicKey } = await this.kms.getPublicKey({ KeyId: opts.newKmsKeyId });
     const raw = spkiToRawEd25519(PublicKey);
@@ -235,6 +255,14 @@ export class KmsKeyStore implements KeyStore {
       valid_until: null,
       status: "active",
     };
+    // Rotation is atomic: any OTHER active key for this owner+kind moves to
+    // grace too, so at most one key is "active" after a rotation (audit H-07).
+    for (const r of this.records) {
+      if (r.owner === old.owner && r.kind === old.kind && r.status === "active" && r.key_id !== newId) {
+        r.status = "grace";
+        if (!r.valid_until) r.valid_until = graceUntil;
+      }
+    }
     this.records.push(rec);
     this.kmsIds.set(newId, opts.newKmsKeyId);
     this.persist();

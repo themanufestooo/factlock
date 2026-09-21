@@ -1,6 +1,6 @@
 """FactLock core protocol library (Python reference implementation)."""
 
-from .canonicalize import canonicalize, canonicalize_str
+from .canonicalize import canonicalize, canonicalize_str, MAX_SAFE_INTEGER
 from .ed25519 import (
     b64d,
     b64e,
@@ -13,6 +13,7 @@ from .ed25519 import (
 __all__ = [
     "canonicalize",
     "canonicalize_str",
+    "MAX_SAFE_INTEGER",
     "generate_keypair",
     "keypair_from_seed",
     "sign",

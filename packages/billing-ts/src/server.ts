@@ -2,21 +2,24 @@
  * Billing HTTP server (T13/T14) — node:http only.
  *
  *   POST /v1/billing/webhook                    Stripe webhook (raw body; signature-verified)
- *   POST /v1/billing/checkout {customer_id, plan_id, success_url, cancel_url}
- *   POST /v1/billing/portal   {customer_id, return_url}
- *   GET  /v1/billing/status?customer_id=        subscription + badge state + entitlements
- *   GET  /v1/billing/preview?customer_id=[&month=]  invoice preview (never charges)
- *   GET  /v1/plans                              plan catalog
- *   POST /v1/api-keys {customer_id}             issue key (secret shown once)
- *   POST /v1/api-keys/:id/revoke
- *   POST /v1/usage/ingest {key_id, endpoint, units}
- *   GET  /v1/usage/summary?customer_id=[&month=]  live usage + projected bill
- *   POST /v1/deposits/hold {dispute_id, customer_id, amount_cents}
- *   POST /v1/deposits/:id/release | /forfeit
- *   GET  /healthz
+ *   POST /v1/billing/checkout {plan_id, success_url, cancel_url}  (customer)
+ *   POST /v1/billing/portal   {return_url}                        (customer)
+ *   GET  /v1/billing/status?customer_id=        (customer, own tenant only)
+ *   GET  /v1/billing/preview?customer_id=[&month=]                 (customer, own tenant only)
+ *   GET  /v1/plans                              public catalog
+ *   POST /v1/api-keys                           issue key (customer, own tenant)
+ *   POST /v1/api-keys/:id/revoke                (customer, own key)
+ *   POST /v1/usage/ingest {key_id, endpoint, units, event_id}
+ *        Authorization: Bearer <api_secret> — secret verified against the
+ *        stored hash in constant time; key_id alone never authenticates.
+ *        event_id makes ingestion idempotent (replay → 200, same record).
+ *   GET  /v1/usage/summary?customer_id=[&month=]                   (customer, own tenant only)
+ *   POST /v1/deposits/hold {dispute_id, customer_id, amount_cents} (service)
+ *   POST /v1/deposits/:id/release | /forfeit                      (service)
+ *   GET  /healthz                               public
  *
- * No auth in v1 — sits behind the API gateway in production. Usage ingest is
- * the internal metering path (called by the verify API middleware).
+ * 401 = missing/invalid credential, 403 = cross-tenant or wrong role,
+ * 404 = unknown id, 409 = event_id reused across keys.
  */
 import {
   createServer,
@@ -57,6 +60,14 @@ import {
   type CustomerStore,
   type WebhookDeps,
 } from "./stripe.js";
+import {
+  authenticateBilling,
+  enforceTenant,
+  parseBillingTokens,
+  requireBillingRole,
+  type BillingAuthContext,
+  type BillingTokenRecord,
+} from "./auth.js";
 import { BillingError, type Feature, type StripeClientLike } from "./types.js";
 
 export interface BillingServerOptions {
@@ -67,6 +78,8 @@ export interface BillingServerOptions {
   stripeClient: StripeClientLike;
   stripe: Stripe; // for webhook signature verification
   webhookSecret: string;
+  /** Bearer-token map; defaults to FACTLOCK_BILLING_TOKENS. */
+  tokens?: Map<string, BillingTokenRecord>;
   clock?: Clock;
   maxBodyBytes?: number;
 }
@@ -100,9 +113,18 @@ function readRaw(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
   });
 }
 
+function bearerSecret(req: IncomingMessage): string {
+  const h = req.headers.authorization;
+  if (!h || !h.startsWith("Bearer ")) {
+    throw new BillingError("unauthorized", "Authorization: Bearer <api_secret> is required", 401);
+  }
+  return h.slice("Bearer ".length).trim();
+}
+
 export function createBillingServer(opts: BillingServerOptions): Server {
   const clock: Clock = opts.clock ?? (() => new Date());
   const maxBody = opts.maxBodyBytes ?? 1_000_000;
+  const tokens = opts.tokens ?? parseBillingTokens(process.env.FACTLOCK_BILLING_TOKENS);
 
   const webhookDeps: WebhookDeps = {
     stripe: opts.stripe,
@@ -111,6 +133,9 @@ export function createBillingServer(opts: BillingServerOptions): Server {
     subscriptions: opts.subscriptions,
     clock,
   };
+
+  const auth = (req: IncomingMessage): BillingAuthContext =>
+    authenticateBilling(req.headers.authorization, tokens);
 
   return createServer(async (req, res) => {
     try {
@@ -138,8 +163,10 @@ export function createBillingServer(opts: BillingServerOptions): Server {
       }
 
       if (method === "POST" && path === "/v1/billing/checkout") {
+        const a = auth(req);
         const body = JSON.parse((await readRaw(req, maxBody)).toString("utf-8"));
-        const customer = await opts.customers.get(body.customer_id);
+        enforceTenant(a, a.customerId!);
+        const customer = await opts.customers.get(a.customerId!);
         if (!customer) throw new BillingError("customer_not_found", "unknown customer", 404);
         const sub = await opts.subscriptions.getByCustomer(customer.id);
         const plan_id = body.plan_id;
@@ -158,8 +185,10 @@ export function createBillingServer(opts: BillingServerOptions): Server {
       }
 
       if (method === "POST" && path === "/v1/billing/portal") {
+        const a = auth(req);
         const body = JSON.parse((await readRaw(req, maxBody)).toString("utf-8"));
-        const customer = await opts.customers.get(body.customer_id);
+        enforceTenant(a, a.customerId!);
+        const customer = await opts.customers.get(a.customerId!);
         if (!customer) throw new BillingError("customer_not_found", "unknown customer", 404);
         const session = await opts.stripeClient.createPortalSession({
           customer_id: customer.id,
@@ -170,8 +199,10 @@ export function createBillingServer(opts: BillingServerOptions): Server {
       }
 
       if (method === "GET" && path === "/v1/billing/status") {
+        const a = auth(req);
         const customer_id = url.searchParams.get("customer_id");
         if (!customer_id) throw new BillingError("bad_request", "customer_id required", 400);
+        enforceTenant(a, customer_id);
         const sub = await opts.subscriptions.getByCustomer(customer_id);
         const entitled = Object.fromEntries(
           FEATURES.map((f) => [f, isEntitled(sub, f, clock)]),
@@ -186,8 +217,10 @@ export function createBillingServer(opts: BillingServerOptions): Server {
       }
 
       if (method === "GET" && path === "/v1/billing/preview") {
+        const a = auth(req);
         const customer_id = url.searchParams.get("customer_id");
         if (!customer_id) throw new BillingError("bad_request", "customer_id required", 400);
+        enforceTenant(a, customer_id);
         const month = url.searchParams.get("month") ?? undefined;
         const sub = await opts.subscriptions.getByCustomer(customer_id);
         json(res, 200, await previewInvoice(opts.metering, sub, customer_id, month, clock));
@@ -195,8 +228,12 @@ export function createBillingServer(opts: BillingServerOptions): Server {
       }
 
       if (method === "POST" && path === "/v1/api-keys") {
+        const a = auth(req);
         const body = JSON.parse((await readRaw(req, maxBody)).toString("utf-8"));
-        const { key, secret } = await issueApiKey(opts.metering, body.customer_id, clock);
+        // The key is issued for the token's own tenant — a forged
+        // customer_id in the body is ignored.
+        enforceTenant(a, a.customerId!);
+        const { key, secret } = await issueApiKey(opts.metering, a.customerId!, clock);
         json(res, 201, { key_id: key.id, prefix: key.prefix, secret });
         return;
       }
@@ -204,27 +241,45 @@ export function createBillingServer(opts: BillingServerOptions): Server {
       {
         const m = path.match(/^\/v1\/api-keys\/([^/]+)\/revoke$/);
         if (method === "POST" && m) {
+          const a = auth(req);
+          const key = await opts.metering.getKey(m[1]);
+          if (!key) throw new BillingError("key_not_found", "unknown API key", 404);
+          enforceTenant(a, key.customer_id);
           json(res, 200, await revokeApiKey(opts.metering, m[1], clock));
           return;
         }
       }
 
       if (method === "POST" && path === "/v1/usage/ingest") {
+        // Key-scoped authentication: the metered API key's secret itself, as
+        // `Authorization: Bearer <secret>`, verified against the stored hash
+        // in constant time. This is intentionally NOT the service-role
+        // operator token (FACTLOCK_BILLING_TOKENS): usage is reported by the
+        // key holder and bound to that key, while the service role is
+        // reserved for deposit hold/release. A key_id alone never
+        // authenticates.
+        const secret = bearerSecret(req);
         const body = JSON.parse((await readRaw(req, maxBody)).toString("utf-8"));
-        const record = await ingestUsage(
+        const { record, duplicate } = await ingestUsage(
           opts.metering,
-          body.key_id,
-          body.endpoint,
-          body.units,
+          {
+            key_id: body.key_id,
+            secret,
+            endpoint: body.endpoint,
+            units: body.units,
+            event_id: body.event_id,
+          },
           clock,
         );
-        json(res, 201, { id: record.id, at: record.at });
+        json(res, duplicate ? 200 : 201, { id: record.id, at: record.at, duplicate });
         return;
       }
 
       if (method === "GET" && path === "/v1/usage/summary") {
+        const a = auth(req);
         const customer_id = url.searchParams.get("customer_id");
         if (!customer_id) throw new BillingError("bad_request", "customer_id required", 400);
+        enforceTenant(a, customer_id);
         const month = url.searchParams.get("month") ?? monthOf(clock());
         const sub = await opts.subscriptions.getByCustomer(customer_id);
         const rollup = await rollupMonth(opts.metering, customer_id, month, clock);
@@ -249,6 +304,8 @@ export function createBillingServer(opts: BillingServerOptions): Server {
       }
 
       if (method === "POST" && path === "/v1/deposits/hold") {
+        const a = auth(req);
+        requireBillingRole(a, "service");
         const body = JSON.parse((await readRaw(req, maxBody)).toString("utf-8"));
         const entry = await holdDeposit(
           opts.deposits,
@@ -264,6 +321,8 @@ export function createBillingServer(opts: BillingServerOptions): Server {
       {
         const m = path.match(/^\/v1\/deposits\/([^/]+)\/(release|forfeit)$/);
         if (method === "POST" && m) {
+          const a = auth(req);
+          requireBillingRole(a, "service");
           const entry =
             m[2] === "release"
               ? await releaseDeposit(opts.deposits, m[1], clock)

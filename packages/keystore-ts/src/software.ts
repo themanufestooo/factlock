@@ -17,7 +17,9 @@ import {
 } from "@factlock/attestation-core";
 import {
   ERR_DUPLICATE_KEY_ID,
+  ERR_KEY_EXPIRED,
   ERR_KEY_NOT_FOUND,
+  ERR_KEY_NOT_YET_VALID,
   ERR_KEY_RETIRED,
   KeyRecord,
   KeyKind,
@@ -143,6 +145,16 @@ export class SoftwareKeyStore implements KeyStore {
     if (rec.status === "retired") {
       throw new KeystoreError(ERR_KEY_RETIRED, `key ${keyId} is retired and cannot sign`);
     }
+    // Validity windows are enforced here, not left to callers: an expired
+    // grace key or a not-yet-valid key must never sign, even if sunset() or
+    // rotation bookkeeping was missed (audit H-07).
+    const nowMs = Date.now();
+    if (new Date(rec.valid_from).getTime() > nowMs) {
+      throw new KeystoreError(ERR_KEY_NOT_YET_VALID, `key ${keyId} is not yet valid`);
+    }
+    if (rec.valid_until && new Date(rec.valid_until).getTime() <= nowMs) {
+      throw new KeystoreError(ERR_KEY_EXPIRED, `key ${keyId} is past its validity window`);
+    }
     const sk = this.secrets.get(keyId);
     if (!sk) throw new KeystoreError(ERR_KEY_NOT_FOUND, `no private material for ${keyId}`);
     return edSign(sk, message);
@@ -176,12 +188,11 @@ export class SoftwareKeyStore implements KeyStore {
       throw new KeystoreError(ERR_KEY_RETIRED, `cannot rotate retired key ${keyId}`);
     }
     const graceDays = opts?.gracePeriodDays ?? 30;
-    const newId = successorKeyId(keyId);
-    if (this.records.some((r) => r.key_id === newId)) {
-      throw new KeystoreError(
-        ERR_DUPLICATE_KEY_ID,
-        `successor key_id ${newId} already exists`,
-      );
+    // Find the next unused successor id: naive increment can collide when
+    // keys were generated independently (e.g. _01 and _02 both exist).
+    let newId = successorKeyId(keyId);
+    while (this.records.some((r) => r.key_id === newId)) {
+      newId = successorKeyId(newId);
     }
     const { publicKey, privateKey } = generateKeypair();
     const ts = nowIso();

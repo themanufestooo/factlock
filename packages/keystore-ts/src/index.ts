@@ -3,6 +3,8 @@ export {
   KeystoreError,
   ERR_KEY_NOT_FOUND,
   ERR_KEY_RETIRED,
+  ERR_KEY_NOT_YET_VALID,
+  ERR_KEY_EXPIRED,
   ERR_DUPLICATE_KEY_ID,
 } from "./types.js";
 export type {

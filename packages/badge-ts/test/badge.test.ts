@@ -64,6 +64,13 @@ before(async () => {
   const keystore = new SoftwareKeyStore();
   await keystore.generateKey("factlock", "factlock");
   const bizRec = await keystore.generateKey("biz_rapido", "business");
+  // P0 (H-11): key records carry a real-time valid_from, but this harness
+  // freezes issuance in the past — backdate the windows so the keys are
+  // valid at the frozen verified_at.
+  for (const rec of (keystore as unknown as { records: Array<{ valid_from: string }> }).records) {
+    rec.valid_from = "2026-01-01T00:00:00Z";
+  }
+
   const log = new MerkleLog();
   const store = new InMemoryAttestationStore();
   const authorizations = new InMemoryAuthorizationStore();

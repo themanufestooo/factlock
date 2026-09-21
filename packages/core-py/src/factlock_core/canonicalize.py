@@ -3,12 +3,19 @@
 Produces the canonical JSON byte representation that gets signed.
 Numbers follow ECMAScript Number::toString semantics (matching what the
 TypeScript implementation produces via JSON.stringify).
+
+I-JSON (RFC 7493): integers MUST be within the ECMAScript safe range
+±(2**53 - 1). Anything outside it is rejected — the same logical value
+would canonicalize differently across implementations otherwise.
 """
 from __future__ import annotations
 
 import json
 import math
 import re
+
+#: Largest integer with an exact double representation (2**53 - 1).
+MAX_SAFE_INTEGER = 9007199254740991
 
 
 def _check_string(s: str) -> None:
@@ -64,8 +71,19 @@ def _serialize(value) -> str:
     if value is False:
         return "false"
     if isinstance(value, int) and not isinstance(value, bool):
+        if not -MAX_SAFE_INTEGER <= value <= MAX_SAFE_INTEGER:
+            raise ValueError(
+                f"JCS: integer {value} is outside the safe range ±{MAX_SAFE_INTEGER}"
+            )
         return str(value)
     if isinstance(value, float):
+        # Integral floats outside the safe range are rejected exactly like
+        # integers: e.g. 1e21 parses as a float in Python but as an integral
+        # number in JavaScript, and the two sides must agree to fail closed.
+        if value.is_integer() and not -MAX_SAFE_INTEGER <= value <= MAX_SAFE_INTEGER:
+            raise ValueError(
+                f"JCS: integral float {value} is outside the safe range ±{MAX_SAFE_INTEGER}"
+            )
         return _ecma_number_to_string(value)
     if isinstance(value, str):
         _check_string(value)

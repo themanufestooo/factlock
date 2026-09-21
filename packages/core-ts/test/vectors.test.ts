@@ -32,6 +32,15 @@ for (const c of vectors.canonical) {
   });
 }
 
+// I-JSON fail-closed: both implementations must reject integral numbers
+// outside ±(2^53 - 1) rather than silently disagreeing on them.
+for (const c of vectors.rejects ?? []) {
+  test(`canonical/${c.name} rejects`, () => {
+    const input = JSON.parse(JSON.stringify(c.input));
+    assert.throws(() => canonicalize(input), /safe range/);
+  });
+}
+
 for (const c of vectors.signatures) {
   test(`sign/${c.name} reproduces vector`, () => {
     const msg = te.encode(c.message);

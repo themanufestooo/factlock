@@ -80,16 +80,45 @@ export async function verifyAttestation(
   const signed = signedBytes(att);
   const leaf = leafBytes(att);
 
-  // Signatures (key_id resolution: retired keys keep verifying).
+  // Key authorization (audit H-11): keys resolve to SIGNED registry records
+  // carrying owner, role, and validity window — not bare public keys. The
+  // business key must belong to the attestation's subject business, the
+  // countersigning key must be a FactLock key (kind AND owner), and each must have been
+  // valid at issuance time. Unknown, out-of-role, or out-of-window keys
+  // fail closed.
+  const issuedAtMs = new Date(att.verified_at).getTime();
   let signaturesOk = false;
   try {
-    const bizPub = await deps.keystore.getPublicKey(att.signatures.business.key_id);
-    const verPub = await deps.keystore.getPublicKey(att.signatures.factlock.key_id);
+    if (!Number.isFinite(issuedAtMs)) throw new Error("bad verified_at");
+    const bizRec = await deps.keystore.getRecord(att.signatures.business.key_id);
+    const verRec = await deps.keystore.getRecord(att.signatures.factlock.key_id);
+    if (!bizRec || !verRec) throw new Error("unknown key_id");
+    const businessId = String((att.subject as Record<string, unknown>).business_id);
+    if (bizRec.kind !== "business" || bizRec.owner !== businessId) {
+      throw new Error("business key is not owned by the subject business");
+    }
+    // The countersigner must be a FactLock key: BOTH kind and owner are
+    // checked, because generateKey() does not restrict the kind a business
+    // can register under its own owner.
+    const factlockOwner = deps.factlockOwner ?? "factlock";
+    if (verRec.kind !== "factlock" || verRec.owner !== factlockOwner) {
+      throw new Error("countersigning key is not a FactLock key");
+    }
+    for (const rec of [bizRec, verRec]) {
+      if (new Date(rec.valid_from).getTime() > issuedAtMs) {
+        throw new Error(`key ${rec.key_id} was not yet valid at issuance`);
+      }
+      if (rec.valid_until && new Date(rec.valid_until).getTime() <= issuedAtMs) {
+        throw new Error(`key ${rec.key_id} was past its validity window at issuance`);
+      }
+    }
+    const bizPub = new Uint8Array(Buffer.from(bizRec.public_key, "base64"));
+    const verPub = new Uint8Array(Buffer.from(verRec.public_key, "base64"));
     const bizOk = verify(bizPub, signed, b64d(att.signatures.business.sig));
     const verOk = verify(verPub, signed, b64d(att.signatures.factlock.sig));
     signaturesOk = bizOk && verOk;
   } catch {
-    signaturesOk = false; // unknown key_id, malformed sig, etc.
+    signaturesOk = false; // unknown key_id, wrong role/owner, out-of-window, malformed sig, etc.
   }
 
   // Merkle inclusion against the CURRENT published root.

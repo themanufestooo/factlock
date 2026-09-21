@@ -67,6 +67,16 @@ export interface UsageRecord {
   at: string;
 }
 
+/**
+ * Idempotency ledger entry (audit H-05): the caller-supplied event_id is
+ * the dedupe key. The first ingest wins; replays return the stored record.
+ */
+export interface ProcessedEvent {
+  event_id: string;
+  record: UsageRecord;
+  processed_at: string;
+}
+
 export interface MonthlyRollup {
   customer_id: string;
   month: string; // "YYYY-MM"

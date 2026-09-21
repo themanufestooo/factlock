@@ -17,6 +17,13 @@ def test_canonical_vectors(case):
     assert canonicalize(case["input"]).decode("utf-8") == case["expected"]
 
 
+@pytest.mark.parametrize("case", VECTORS.get("rejects", []), ids=lambda c: c["name"])
+def test_canonical_rejects_unsafe_integers(case):
+    """I-JSON fail-closed: integral numbers outside the safe range are rejected."""
+    with pytest.raises(ValueError, match="safe range"):
+        canonicalize(case["input"])
+
+
 @pytest.mark.parametrize("case", VECTORS["signatures"], ids=lambda c: c["name"])
 def test_signature_vectors(case):
     msg = case["message"].encode("utf-8")

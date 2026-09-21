@@ -32,14 +32,23 @@ function customer(): Customer {
   };
 }
 
+const ingest = (
+  store: InMemoryMeteringStore,
+  key: { id: string },
+  secret: string,
+  eventId: string,
+  endpoint = "verify",
+  units = 1,
+) => ingestUsage(store, { key_id: key.id, secret, endpoint, units, event_id: eventId }, CLOCK);
+
 test("metering: ingest 1000 records, rollup math exact, reconcile passes", async () => {
   const store = new InMemoryMeteringStore();
-  const { key } = await issueApiKey(store, "cus_1", CLOCK);
+  const { key, secret } = await issueApiKey(store, "cus_1", CLOCK);
   assert.ok(key.prefix.length > 0);
 
   // 1000 verify calls + 250 badge calls.
-  for (let i = 0; i < 1000; i++) await ingestUsage(store, key.id, "verify", 1, CLOCK);
-  for (let i = 0; i < 250; i++) await ingestUsage(store, key.id, "badge", 1, CLOCK);
+  for (let i = 0; i < 1000; i++) await ingest(store, key, secret, `v${i}`);
+  for (let i = 0; i < 250; i++) await ingest(store, key, secret, `b${i}`, "badge");
 
   const rollup = await rollupMonth(store, "cus_1", "2026-09", CLOCK);
   assert.equal(rollup.total_units, 1250);
@@ -53,9 +62,9 @@ test("metering: ingest 1000 records, rollup math exact, reconcile passes", async
 
 test("metering: revoked key is rejected", async () => {
   const store = new InMemoryMeteringStore();
-  const { key } = await issueApiKey(store, "cus_1", CLOCK);
+  const { key, secret } = await issueApiKey(store, "cus_1", CLOCK);
   await revokeApiKey(store, key.id, CLOCK);
-  await assert.rejects(ingestUsage(store, key.id, "verify", 1, CLOCK), (e: unknown) => {
+  await assert.rejects(ingest(store, key, secret, "ev_revoked"), (e: unknown) => {
     assert.ok(e instanceof BillingError && e.httpStatus === 403);
     return true;
   });
@@ -63,9 +72,9 @@ test("metering: revoked key is rejected", async () => {
 
 test("metering: invalid units rejected", async () => {
   const store = new InMemoryMeteringStore();
-  const { key } = await issueApiKey(store, "cus_1", CLOCK);
-  await assert.rejects(ingestUsage(store, key.id, "verify", 0, CLOCK), BillingError);
-  await assert.rejects(ingestUsage(store, key.id, "verify", 1.5, CLOCK), BillingError);
+  const { key, secret } = await issueApiKey(store, "cus_1", CLOCK);
+  await assert.rejects(ingest(store, key, secret, "ev_zero", "verify", 0), BillingError);
+  await assert.rejects(ingest(store, key, secret, "ev_frac", "verify", 1.5), BillingError);
 });
 
 test("projection: linear extrapolation over the month", () => {
@@ -80,8 +89,8 @@ test("invoice preview: founding sub, 1500 units → exact totals, never charges"
   const subs = new InMemorySubscriptionStore();
   const sub = await createSubscription(subs, customer(), "founding", CLOCK);
 
-  const { key } = await issueApiKey(metering, "cus_1", CLOCK);
-  for (let i = 0; i < 1500; i++) await ingestUsage(metering, key.id, "verify", 1, CLOCK);
+  const { key, secret } = await issueApiKey(metering, "cus_1", CLOCK);
+  for (let i = 0; i < 1500; i++) await ingest(metering, key, secret, `p${i}`);
 
   const stripeStub = new RecordingStripeClient();
   const preview = await previewInvoice(metering, sub, "cus_1", "2026-09", CLOCK);
@@ -101,8 +110,8 @@ test("invoice preview: under quota → no overage", async () => {
   const metering = new InMemoryMeteringStore();
   const subs = new InMemorySubscriptionStore();
   const sub = await createSubscription(subs, customer(), "standard", CLOCK);
-  const { key } = await issueApiKey(metering, "cus_1", CLOCK);
-  for (let i = 0; i < 100; i++) await ingestUsage(metering, key.id, "verify", 1, CLOCK);
+  const { key, secret } = await issueApiKey(metering, "cus_1", CLOCK);
+  for (let i = 0; i < 100; i++) await ingest(metering, key, secret, `u${i}`);
   const preview = await previewInvoice(metering, sub, "cus_1", "2026-09", CLOCK);
   assert.equal(preview.base_cents, 7900);
   assert.equal(preview.overage_units, 0);
@@ -114,4 +123,58 @@ test("invoice preview: no subscription → zeroed preview", async () => {
   const preview = await previewInvoice(metering, null, "cus_9", "2026-09", CLOCK);
   assert.equal(preview.total_cents, 0);
   assert.equal(preview.charged, false);
+});
+
+test("metering: recordUsage lands the idempotency marker and usage together", async () => {
+  const store = new InMemoryMeteringStore();
+  const { key, secret } = await issueApiKey(store, "cus_1", CLOCK);
+  const first = await ingest(store, key, secret, "evt_atomic");
+  assert.equal(first.duplicate, false);
+
+  // Both halves of the atomic write are visible.
+  const marker = await store.getProcessedEvent("evt_atomic");
+  assert.ok(marker, "idempotency marker must be persisted");
+  assert.equal(marker.record.id, first.record.id);
+  const usage = await store.usageForMonth("cus_1", "2026-09");
+  assert.equal(usage.length, 1);
+  assert.equal(usage[0].id, first.record.id);
+
+  // A replay returns the same record and records nothing new.
+  const replay = await ingest(store, key, secret, "evt_atomic");
+  assert.equal(replay.duplicate, true);
+  assert.equal(replay.record.id, first.record.id);
+  assert.equal((await store.usageForMonth("cus_1", "2026-09")).length, 1);
+});
+
+test("metering: a failed recordUsage leaves no partial state", async () => {
+  class FailingStore extends InMemoryMeteringStore {
+    override async recordUsage(): Promise<void> {
+      throw new Error("simulated crash between writes");
+    }
+  }
+  const store = new FailingStore();
+  const { key, secret } = await issueApiKey(store, "cus_1", CLOCK);
+  await assert.rejects(ingest(store, key, secret, "evt_crash"), /simulated crash/);
+  // Atomic contract: no marker without usage, no usage without marker.
+  assert.equal(await store.getProcessedEvent("evt_crash"), null);
+  assert.equal((await store.usageForMonth("cus_1", "2026-09")).length, 0);
+});
+
+test("metering: mutating a store-returned key cannot bypass revocation", async () => {
+  const store = new InMemoryMeteringStore();
+  const { key, secret } = await issueApiKey(store, "cus_1", CLOCK);
+  await revokeApiKey(store, key.id, CLOCK);
+
+  // A caller that mutates the object getKey returned must not clear the
+  // revocation in the store.
+  const leaked = await store.getKey(key.id);
+  assert.ok(leaked);
+  (leaked as { revoked_at: string | null }).revoked_at = null;
+
+  await assert.rejects(ingest(store, key, secret, "evt_mut"), (e: unknown) => {
+    assert.ok(e instanceof BillingError && e.httpStatus === 403);
+    return true;
+  });
+  const reread = await store.getKey(key.id);
+  assert.ok(reread?.revoked_at, "stored revocation must survive caller mutation");
 });
