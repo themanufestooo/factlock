@@ -6,7 +6,9 @@ export {
   ERR_KEY_NOT_YET_VALID,
   ERR_KEY_EXPIRED,
   ERR_DUPLICATE_KEY_ID,
+  ERR_SOFTWARE_KEYSTORE_FORBIDDEN,
 } from "./types.js";
+export { isProductionEnv, atomicWriteFile } from "./persist.js";
 export type {
   KeyKind,
   KeyStatus,
